@@ -1564,7 +1564,15 @@ extension ViewController {
                         // 单个重命名
                         // Single rename
                         let newUrl = originalUrl.deletingLastPathComponent().appendingPathComponent(newName)
-                        if FileManager.default.fileExists(atPath: newUrl.path) {
+                        if originalUrl.path == newUrl.path {
+                            // 名称完全未变，无需操作
+                            // Name unchanged, nothing to do
+                            return false
+                        }
+                        // 允许仅大小写变更的重命名（如 A.jpg -> a.jpg），因为在大小写不敏感文件系统上它们指向同一文件
+                        // Allow case-only renames (e.g. A.jpg -> a.jpg) since they refer to the same file on case-insensitive filesystems
+                        let isCaseOnlyRename = originalUrl.path.lowercased() == newUrl.path.lowercased()
+                        if FileManager.default.fileExists(atPath: newUrl.path) && !isCaseOnlyRename {
                             showAlert(message: NSLocalizedString("renaming-conflict", comment: "该名称的文件已存在，请选择其他名称。"))
                             allSuccess = false
                             return false
