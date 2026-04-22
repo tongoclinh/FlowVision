@@ -847,13 +847,16 @@ extension ViewController {
                    let offset=fileDB.db[SortKeyDir(curFolder)]?.files.offset(of: index) {
                     fileDB.unlock()
                     let indexPath=IndexPath(item: offset, section: 0)
-                    collectionView.scrollToItems(at: [indexPath], scrollPosition: .nearestHorizontalEdge)
-                    collectionView.reloadData()
                     collectionView.deselectAll(nil)
-                    collectionView.delegate?.collectionView?(collectionView, shouldSelectItemsAt: [indexPath])
-                    collectionView.selectItems(at: [indexPath], scrollPosition: [])
-                    collectionView.delegate?.collectionView?(collectionView, didSelectItemsAt: [indexPath])
-                    setLoadThumbPriority(ifNeedVisable: true)
+                    collectionView.reloadData()
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        collectionView.scrollToItems(at: [indexPath], scrollPosition: .nearestHorizontalEdge)
+                        collectionView.delegate?.collectionView?(collectionView, shouldSelectItemsAt: [indexPath])
+                        collectionView.selectItems(at: [indexPath], scrollPosition: [])
+                        collectionView.delegate?.collectionView?(collectionView, didSelectItemsAt: [indexPath])
+                        setLoadThumbPriority(ifNeedVisable: true)
+                    }
                 }else{
                     fileDB.unlock()
                 }
@@ -882,13 +885,16 @@ extension ViewController {
             
             if !indexPaths.isEmpty {
                 let indexPathSet = Set(indexPaths)
-                collectionView.scrollToItems(at: [indexPaths[0]], scrollPosition: .nearestHorizontalEdge)
-                collectionView.reloadData()
                 collectionView.deselectAll(nil)
-                collectionView.delegate?.collectionView?(collectionView, shouldSelectItemsAt: indexPathSet)
-                collectionView.selectItems(at: indexPathSet, scrollPosition: [])
-                collectionView.delegate?.collectionView?(collectionView, didSelectItemsAt: indexPathSet)
-                setLoadThumbPriority(ifNeedVisable: true)
+                collectionView.reloadData()
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    collectionView.scrollToItems(at: [indexPaths[0]], scrollPosition: .nearestHorizontalEdge)
+                    collectionView.delegate?.collectionView?(collectionView, shouldSelectItemsAt: indexPathSet)
+                    collectionView.selectItems(at: indexPathSet, scrollPosition: [])
+                    collectionView.delegate?.collectionView?(collectionView, didSelectItemsAt: indexPathSet)
+                    setLoadThumbPriority(ifNeedVisable: true)
+                }
             }
         }
     }
