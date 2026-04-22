@@ -1039,23 +1039,39 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
         if let searchOverlay = searchOverlay,
            let containerView = searchOverlay.containerView {
             searchOverlay.frame = view.bounds
-            containerView.frame.origin.x = searchOverlay.bounds.width - containerView.frame.width - 30
+            if view.userInterfaceLayoutDirection == .rightToLeft {
+                containerView.frame.origin.x = 30
+            } else {
+                containerView.frame.origin.x = searchOverlay.bounds.width - containerView.frame.width - 30
+            }
             containerView.frame.origin.y = searchOverlay.bounds.height - containerView.frame.height - 20
         }
     }
     
     func splitView(_ splitView: NSSplitView, resizeSubviewsWithOldSize oldSize: NSSize) {
-        let leftView = splitView.arrangedSubviews[0]
-        let rightView = splitView.arrangedSubviews[1]
+        // 通过outlet识别sidebar，不依赖索引，以兼容RTL下子视图顺序交换
+        // Identify sidebar by outlet, not index, to handle RTL subview order swap
+        let sidebarView: NSView
+        let contentView: NSView
+        if let sidebarParent = outlineScrollView.superview, splitView.arrangedSubviews.contains(sidebarParent) {
+            sidebarView = sidebarParent
+            contentView = splitView.arrangedSubviews.first { $0 !== sidebarParent }!
+        } else {
+            sidebarView = splitView.arrangedSubviews[0]
+            contentView = splitView.arrangedSubviews[1]
+        }
 
         let dividerThickness = splitView.dividerThickness
-        let newWidth = splitView.bounds.width - leftView.frame.width - dividerThickness
-        rightView.frame.size.width = newWidth
+        let contentWidth = splitView.bounds.width - sidebarView.frame.width - dividerThickness
+        let isRTL = splitView.userInterfaceLayoutDirection == .rightToLeft
 
-        // 更新右侧视图的大小，左侧视图保持不变
-        // Update right view size, keep left view unchanged
-        rightView.frame = CGRect(x: leftView.frame.width + dividerThickness, y: 0, width: newWidth, height: splitView.bounds.height)
-        leftView.frame = CGRect(x: 0, y: 0, width: leftView.frame.width, height: splitView.bounds.height)
+        if isRTL {
+            contentView.frame = CGRect(x: 0, y: 0, width: contentWidth, height: splitView.bounds.height)
+            sidebarView.frame = CGRect(x: contentWidth + dividerThickness, y: 0, width: sidebarView.frame.width, height: splitView.bounds.height)
+        } else {
+            sidebarView.frame = CGRect(x: 0, y: 0, width: sidebarView.frame.width, height: splitView.bounds.height)
+            contentView.frame = CGRect(x: sidebarView.frame.width + dividerThickness, y: 0, width: contentWidth, height: splitView.bounds.height)
+        }
     }
     func splitViewDidResizeSubviews(_ notification: Notification) {
         // 取消之前的定时器

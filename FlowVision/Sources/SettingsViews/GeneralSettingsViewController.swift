@@ -90,6 +90,14 @@ final class GeneralSettingsViewController: NSViewController, SettingsPane {
         labelHomeFolder.stringValue = globalVar.homeFolder.removingPercentEncoding!.replacingOccurrences(of: "file://", with: "")
         labelHomeFolder.textColor = globalVar.openLastFolder ? .disabledControlTextColor : .controlTextColor
         buttonSelectHomeFolder.isEnabled = !globalVar.openLastFolder
+
+        // MARK: RTL support
+        if let container = radioHomeFolder.superview {
+            convertToLeadingLayoutForRTL(container)
+        }
+        if let container = scrollSensitivitySlider.superview {
+            convertToLeadingLayoutForRTL(container)
+        }
     }
     
     @IBAction func languageSelectionChanged(_ sender: NSPopUpButton) {

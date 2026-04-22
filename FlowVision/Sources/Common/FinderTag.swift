@@ -100,7 +100,7 @@ class FinderTagDotsView: NSView {
     var onHoverChanged: ((Int) -> Void)?
     private var hoveredIndex: Int = -1
 
-    private static let dotDiameter: CGFloat = 16
+    private static let dotDiameter: CGFloat = 14
     private static let dotSpacing: CGFloat = 8
     private static let paddingH: CGFloat = 20
     private static let paddingV: CGFloat = 4
@@ -116,21 +116,40 @@ class FinderTagDotsView: NSView {
         let height = d + Self.paddingV * 2
 
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: height))
-
-        let trackingArea = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways],
-            owner: self, userInfo: nil
-        )
-        addTrackingArea(trackingArea)
+        autoresizingMask = .width
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        for area in trackingAreas { removeTrackingArea(area) }
+        addTrackingArea(NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways],
+            owner: self, userInfo: nil
+        ))
+    }
+
+    private func dotsOriginX() -> CGFloat {
+        // RTL: start dots from right edge
+        if userInterfaceLayoutDirection == .rightToLeft {
+            let d = Self.dotDiameter
+            let s = Self.dotSpacing
+            let dotsWidth = CGFloat(tags.count) * d + CGFloat(max(0, tags.count - 1)) * s
+            return bounds.width - Self.paddingH - dotsWidth
+        }
+        return Self.paddingH
+    }
+
+    private var isRTL: Bool { userInterfaceLayoutDirection == .rightToLeft }
+
     private func dotRect(at index: Int) -> NSRect {
         let d = Self.dotDiameter
         let s = Self.dotSpacing
-        let x = Self.paddingH + CGFloat(index) * (d + s)
+        // RTL: reverse order so first tag is rightmost
+        let visualIndex = isRTL ? (tags.count - 1 - index) : index
+        let x = dotsOriginX() + CGFloat(visualIndex) * (d + s)
         let y = Self.paddingV
         return NSRect(x: x, y: y, width: d, height: d)
     }
@@ -138,13 +157,14 @@ class FinderTagDotsView: NSView {
     private func dotIndex(at point: NSPoint) -> Int? {
         guard !tags.isEmpty else { return nil }
         let step = Self.dotDiameter + Self.dotSpacing
-        let firstCenter = Self.paddingH + Self.dotDiameter / 2
+        let firstCenter = dotsOriginX() + Self.dotDiameter / 2
         let lastCenter = firstCenter + CGFloat(tags.count - 1) * step
         let halfStep = step / 2
         guard point.x >= firstCenter - halfStep && point.x <= lastCenter + halfStep else { return nil }
-        let index = Int(round((point.x - firstCenter) / step))
-        guard index >= 0 && index < tags.count else { return nil }
-        return index
+        let visualIndex = Int(round((point.x - firstCenter) / step))
+        guard visualIndex >= 0 && visualIndex < tags.count else { return nil }
+        // RTL: reverse back to logical index
+        return isRTL ? (tags.count - 1 - visualIndex) : visualIndex
     }
 
     private static let hoverEnlarge: CGFloat = 4

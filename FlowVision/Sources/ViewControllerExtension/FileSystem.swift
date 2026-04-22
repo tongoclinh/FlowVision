@@ -58,7 +58,7 @@ extension ViewController {
         let statusLabel = NSTextField(labelWithString: "")
         statusLabel.frame = NSRect(x: 20, y: 44, width: panelWidth - 40, height: 20)
         statusLabel.font = NSFont.systemFont(ofSize: 12)
-        statusLabel.alignment = .left
+        statusLabel.alignment = .natural
         statusLabel.lineBreakMode = .byTruncatingTail
         contentView.addSubview(statusLabel)
         
@@ -1298,10 +1298,10 @@ extension ViewController {
                     let exifData = convertExifData(file: file)
                     var formatedExifData = formatExifData(exifData ?? [:], isVideo: globalVar.HandledVideoExtensions.contains(ext), needWarp: false)
 
-                    formatedExifData.insert((NSLocalizedString("File Path", comment: "文件路径"),url.deletingLastPathComponent().path+"/"), at: 0)
+                    formatedExifData.insert((NSLocalizedString("File Path", comment: "文件路径"), "\u{2066}" + url.deletingLastPathComponent().path + "/" + "\u{2069}"), at: 0)
 
                     if isAlias {
-                        formatedExifData.insert((NSLocalizedString("Original Path", comment: "原始路径"), resolvedUrl.path), at: 0)
+                        formatedExifData.insert((NSLocalizedString("Original Path", comment: "原始路径"), "\u{2066}" + resolvedUrl.path + "\u{2069}"), at: 0)
                         formatedExifData.insert((NSLocalizedString("Alias Type", comment: "替身类型"), aliasTypeLabel), at: 0)
                     }
                     

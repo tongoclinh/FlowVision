@@ -508,10 +508,17 @@ extension WindowController: NSToolbarDelegate {
                 attributes: [.foregroundColor: titleFontColor, .font: font, .paragraphStyle: paragraphStyle]
             )
             if showExtra && !statisticInfo.isEmpty {
-                attributedString.append(NSAttributedString(
-                    string: " " + statisticInfo,
+                let isRTL = NSApp.userInterfaceLayoutDirection == .rightToLeft
+                let statAttr = NSAttributedString(
+                    string: isRTL ? statisticInfo + " " : " " + statisticInfo,
                     attributes: [.foregroundColor: NSColor.placeholderTextColor, .font: font, .paragraphStyle: paragraphStyle]
-                ))
+                )
+                // RTL: put statistics before title
+                if isRTL {
+                    attributedString.insert(statAttr, at: 0)
+                } else {
+                    attributedString.append(statAttr)
+                }
             }
             
             let titleLabel = createWindowTitleLabel(string: "")
@@ -530,7 +537,7 @@ extension WindowController: NSToolbarDelegate {
             let titleLabel = createWindowTitleLabel(string: text ?? "")
             titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
             titleLabel.textColor = NSColor.placeholderTextColor
-            titleLabel.alignment = .left
+            titleLabel.alignment = .natural
             toolbarItem.view = titleLabel
 //            toolbarItem.minSize = NSSize(width: 200, height: titleLabel.fittingSize.height)
 //            toolbarItem.maxSize = NSSize(width: 10000, height: titleLabel.fittingSize.height)

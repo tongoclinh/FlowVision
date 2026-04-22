@@ -1716,7 +1716,8 @@ class LargeImageView: NSView {
                 syncEditingCanvasFrame()
             } else if file.type == .video {
                 if getViewController(self)!.publicVar.isRightMouseDown {
-                    seekVideoByDrag(deltaX: dx)
+                    let effectiveDx = userInterfaceLayoutDirection == .rightToLeft ? -dx : dx
+                    seekVideoByDrag(deltaX: effectiveDx)
                     videoControlsView.showControls()
                 }
             }
@@ -2428,7 +2429,7 @@ class ExifTextView: NSView {
         path.fill()
 
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.alignment = .left
+        paragraphStyle.alignment = .natural
 
         let attributes: [NSAttributedString.Key: Any] = [
             .foregroundColor: NSColor.white,
@@ -2445,6 +2446,8 @@ class ExifTextView: NSView {
         var yOffset: CGFloat = rect.origin.y + rect.height - padding
 
         let keyMaxWidth = textItems.map { $0.0.size(withAttributes: keyAttributes).width }.max() ?? 0
+        let isRTL = userInterfaceLayoutDirection == .rightToLeft
+
         // 根据keyMaxWidth设置mapButton的左边距
         // Set mapButton left margin based on keyMaxWidth
         if let mapButton = mapButton {
@@ -2452,10 +2455,17 @@ class ExifTextView: NSView {
                 mapButton.removeFromSuperview()
                 superview.addSubview(mapButton)
                 mapButton.translatesAutoresizingMaskIntoConstraints = false
-                NSLayoutConstraint.activate([
-                    mapButton.leadingAnchor.constraint(equalTo: superview.leadingAnchor, constant: rect.origin.x + padding + keyMaxWidth + 10),
-                    mapButton.centerYAnchor.constraint(equalTo: superview.topAnchor, constant: rect.origin.y + rect.height - padding - 8)
-                ])
+                if isRTL {
+                    NSLayoutConstraint.activate([
+                        mapButton.trailingAnchor.constraint(equalTo: superview.trailingAnchor, constant: -(rect.origin.x + padding)),
+                        mapButton.centerYAnchor.constraint(equalTo: superview.topAnchor, constant: rect.origin.y + rect.height - padding - 8)
+                    ])
+                } else {
+                    NSLayoutConstraint.activate([
+                        mapButton.leadingAnchor.constraint(equalTo: superview.leadingAnchor, constant: rect.origin.x + padding + keyMaxWidth + 10),
+                        mapButton.centerYAnchor.constraint(equalTo: superview.topAnchor, constant: rect.origin.y + rect.height - padding - 8)
+                    ])
+                }
             }
         }
 
@@ -2474,12 +2484,19 @@ class ExifTextView: NSView {
 
             let keyString = NSString(string: key)
             let valueString = NSString(string: String(describing: value))
-            
+
             let keySize = keyString.size(withAttributes: keyAttributes)
             let valueSize = valueString.size(withAttributes: attributes)
 
-            let keyX = rect.origin.x + padding
-            let valueX = keyX + keyMaxWidth + 10
+            let keyX: CGFloat
+            let valueX: CGFloat
+            if isRTL {
+                keyX = rect.maxX - padding - keySize.width
+                valueX = rect.maxX - padding - keyMaxWidth - 10 - valueSize.width
+            } else {
+                keyX = rect.origin.x + padding
+                valueX = keyX + keyMaxWidth + 10
+            }
 
             keyString.draw(at: CGPoint(x: keyX, y: yOffset - keySize.height), withAttributes: keyAttributes)
             valueString.draw(at: CGPoint(x: valueX, y: yOffset - valueSize.height), withAttributes: attributes)
@@ -2492,13 +2509,20 @@ class ExifTextView: NSView {
         if gpsCoordinates != nil {
             let openKey = NSLocalizedString("Location", comment: "位置")
             let openValue = ""
-            
+
             let openKeySize = openKey.size(withAttributes: keyAttributes)
             let openValueSize = openValue.size(withAttributes: attributes)
-            
-            let openKeyX = rect.origin.x + padding
-            let openValueX = openKeyX + keyMaxWidth + 10
-            
+
+            let openKeyX: CGFloat
+            let openValueX: CGFloat
+            if isRTL {
+                openKeyX = rect.maxX - padding - openKeySize.width
+                openValueX = rect.maxX - padding - keyMaxWidth - 10 - openValueSize.width
+            } else {
+                openKeyX = rect.origin.x + padding
+                openValueX = openKeyX + keyMaxWidth + 10
+            }
+
             openKey.draw(at: CGPoint(x: openKeyX, y: yOffset - openKeySize.height), withAttributes: keyAttributes)
             openValue.draw(at: CGPoint(x: openValueX, y: yOffset - openValueSize.height), withAttributes: attributes)
             

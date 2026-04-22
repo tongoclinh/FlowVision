@@ -22,6 +22,10 @@ final class ActionsSettingsViewController: NSViewController, SettingsPane {
         radioEnterKeyOpen.state = globalVar.isEnterKeyToOpen ? .on : .off
         radioEnterKeyRename.state = globalVar.isEnterKeyToOpen ? .off : .on
 
+        // MARK: RTL support
+        if let container = radioEnterKeyRename.superview {
+            convertToLeadingLayoutForRTL(container)
+        }
     }
 
     @IBAction func enterKeyToOpenToggled(_ sender: NSButton) {

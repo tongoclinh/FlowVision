@@ -24,7 +24,8 @@ private class ClickableSlider: NSSlider {
         let halfKnob = knobSize / 2
         let visibleBarX = barRect.origin.x + halfKnob
         let visibleBarWidth = barRect.width - knobSize
-        let fraction = (point.x - visibleBarX) / visibleBarWidth
+        var fraction = (point.x - visibleBarX) / visibleBarWidth
+        if userInterfaceLayoutDirection == .rightToLeft { fraction = 1 - fraction }
         let clampedFraction = max(0.0, min(1.0, Double(fraction)))
         doubleValue = minValue + clampedFraction * (maxValue - minValue)
         sendAction(action, to: target)
@@ -57,7 +58,9 @@ private class CustomVolumeSliderCell: NSSliderCell {
         let fraction = CGFloat((doubleValue - minValue) / (maxValue - minValue))
         let filledWidth = barRect.width * fraction
         if filledWidth > 0 {
-            let filledRect = NSRect(x: barRect.origin.x, y: barRect.origin.y, width: filledWidth, height: barRect.height)
+            let isRTL = controlView?.userInterfaceLayoutDirection == .rightToLeft
+            let filledX = isRTL ? barRect.maxX - filledWidth : barRect.origin.x
+            let filledRect = NSRect(x: filledX, y: barRect.origin.y, width: filledWidth, height: barRect.height)
             let filledPath = NSBezierPath(roundedRect: filledRect, xRadius: 1.5, yRadius: 1.5)
             filledColor.setFill()
             filledPath.fill()
@@ -69,7 +72,8 @@ private class CustomVolumeSliderCell: NSSliderCell {
         let halfKnob = knobSize / 2
         let trackX = bar.origin.x + halfKnob
         let trackWidth = bar.width - knobSize
-        let fraction = CGFloat((doubleValue - minValue) / (maxValue - minValue))
+        var fraction = CGFloat((doubleValue - minValue) / (maxValue - minValue))
+        if controlView?.userInterfaceLayoutDirection == .rightToLeft { fraction = 1 - fraction }
         let knobCenterX = trackX + trackWidth * fraction
         return NSRect(
             x: knobCenterX - halfKnob,

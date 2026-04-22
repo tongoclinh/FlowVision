@@ -135,7 +135,11 @@ extension ViewController {
             
             // 设置容器视图位置
             // Set container view position
-            containerView.frame.origin.x = view.bounds.width - containerView.frame.width - 30
+            if view.userInterfaceLayoutDirection == .rightToLeft {
+                containerView.frame.origin.x = 30
+            } else {
+                containerView.frame.origin.x = view.bounds.width - containerView.frame.width - 30
+            }
             containerView.frame.origin.y = view.bounds.height - containerView.frame.height - 20
             // 另外注意在viewDidLayout()中实时调整位置
             // Also note: adjust position in real-time in viewDidLayout()
