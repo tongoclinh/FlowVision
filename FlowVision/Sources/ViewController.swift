@@ -174,7 +174,9 @@ class PublicVar{
     }
     var folderStepForwardStack = [String]()
     var folderStepForLocate = [(String,RightMouseGestureDirection)]()
+    var folderStepForLocateTime: DispatchTime = .now()
     var filesForLocateAfterChange = [String]()
+    var filesForLocateAfterChangeTime: DispatchTime = .now()
     var isInFileOperation = false
     var isLeftMouseDown: Bool = false
     var isRightMouseDown: Bool = false
@@ -1339,7 +1341,9 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
                                 
                                 if(dir == curFolder && keepScrollPos && i == count-1){
                                     // publicVar.timer.intervalSafe(name: "recalcLayoutReloadData", second: 0.02+Double(i)*0.0001)
+                                    let savedSelection = collectionView.selectionIndexPaths
                                     collectionView.reloadData()
+                                    collectionView.selectionIndexPaths = savedSelection
                                     collectionView.numberOfItems(inSection:0)
                                     setProgress(1.0)
                                 }
@@ -1380,11 +1384,15 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
                                                 let newIndexPaths = indexPaths.dropFirst(curItemCount + indexPaths.count - nowLayoutCalcPos)
                                                 collectionView.insertItems(at: Set(newIndexPaths))
                                                 setProgress(Double(curItemCount+newIndexPaths.count)/Double(count))
+                                                selectItemsNewChanged(isFinal: false, checkRange: indexPaths)
                                             }
+                                            
                                             if nowLayoutCalcPos == count {
                                                 fileDB.lock()
                                                 dirModel.keepScrollPos=true
                                                 fileDB.unlock()
+                                                
+                                                selectItemsNewChanged(isFinal: true)
                                             }
                                         }
                                         // collectionView.reloadData()
@@ -1548,10 +1556,6 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
                                         let timeInterval = Double(nanoTime) / 1_000_000_000
                                         log("Time taken to reach hidden snapshot reason 1: \(timeInterval) seconds")
                                         log("-----------------------------------------------------------")
-                                        
-                                        // 选中产生变化的文件（粘贴或移动后）
-                                        // Select files that have changed (after paste or move)
-                                        selectItemsNewChanged()
                                     }
                                     
                                     while snapshotQueue.count > 0{

@@ -177,6 +177,7 @@ extension ViewController {
             }
 
             collectionView.reloadData()
+            collectionView.numberOfItems(inSection:0)
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 collectionView.delegate?.collectionView?(collectionView, shouldSelectItemsAt: [indexPath])

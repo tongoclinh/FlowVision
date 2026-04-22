@@ -896,10 +896,6 @@ extension ViewController {
                             let timeInterval = Double(nanoTime) / 1_000_000_000
                             log("Time taken to reach hidden snapshot reason 2: \(timeInterval) seconds")
                             log("-----------------------------------------------------------")
-                            
-                            // 选中产生变化的文件（粘贴或移动后）
-                            // Select files that have changed (after paste or move)
-                            selectItemsNewChanged()
                         }
                         
                         while snapshotQueue.count > 0{
@@ -936,41 +932,44 @@ extension ViewController {
         }
     }
     
-    func selectItemsNewChanged() {
+    /// 选中产生变化的文件（粘贴/移动后）或定位文件夹（返回上级时）
+    /// - Parameters:
+    ///   - isFinal: true=全量模式（检查所有items、清空列表、滚动定位）；false=增量模式（仅检查指定范围、不清空、不滚动）
+    ///   - checkRange: 增量模式下要检查的indexPaths范围；全量模式下忽略此参数
+    func selectItemsNewChanged(isFinal: Bool = true, checkRange: [IndexPath]? = nil) {
+
+        let elapsedThreshold = 2.0
+        
+        let curItemCount = collectionView.numberOfItems(inSection: 0)
         
         fileDB.lock()
-        let curFolder=fileDB.curFolder
+        let curFolder = fileDB.curFolder
+        let dirFiles = fileDB.db[SortKeyDir(curFolder)]?.files
         fileDB.unlock()
         
         // 向上或者后退时定位文件夹
         // Locate folder when going up or back
-        if let (lastFolder,direction) = publicVar.folderStepForLocate.first {
-            
-            if let lastURL = URL(string: lastFolder),
-               let curURL = URL(string: curFolder),
-               lastURL.deletingLastPathComponent().absoluteString == curURL.absoluteString {
-                
+        if let (lastFolder, _) = publicVar.folderStepForLocate.first {
+            let elapsed = Double(DispatchTime.now().uptimeNanoseconds - publicVar.folderStepForLocateTime.uptimeNanoseconds) / 1_000_000_000
+            if elapsed > elapsedThreshold {
                 publicVar.folderStepForLocate.removeAll()
-                
-                let targetFolderPath = lastURL.absoluteString
-                let targetKey = SortKeyFile(targetFolderPath, isDir: true, needGetProperties: true, sortType: publicVar.profile.sortType, isSortFolderFirst: publicVar.profile.isSortFolderFirst, isSortUseFullPath: publicVar.profile.isSortUseFullPath, randomSeed: publicVar.randomSeed)
-                
+            } else if let lastURL = URL(string: lastFolder),
+                      let curURL = URL(string: curFolder),
+                      lastURL.deletingLastPathComponent().absoluteString == curURL.absoluteString {
+                let targetKey = SortKeyFile(lastURL.absoluteString, isDir: true, needGetProperties: true, sortType: publicVar.profile.sortType, isSortFolderFirst: publicVar.profile.isSortFolderFirst, isSortUseFullPath: publicVar.profile.isSortUseFullPath, randomSeed: publicVar.randomSeed)
                 fileDB.lock()
-                if let index=fileDB.db[SortKeyDir(curFolder)]?.files.index(forKey: targetKey),
-                   let offset=fileDB.db[SortKeyDir(curFolder)]?.files.offset(of: index) {
+                if let files = dirFiles,
+                   let index = files.index(forKey: targetKey) {
+                    let offset = files.offset(of: index)
                     fileDB.unlock()
-                    let indexPath=IndexPath(item: offset, section: 0)
-                    collectionView.deselectAll(nil)
-                    collectionView.reloadData()
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self = self else { return }
+                    let indexPath = IndexPath(item: offset, section: 0)
+                    if indexPath.item < curItemCount {
+                        publicVar.folderStepForLocate.removeAll()
                         collectionView.scrollToItems(at: [indexPath], scrollPosition: .nearestHorizontalEdge)
-                        collectionView.delegate?.collectionView?(collectionView, shouldSelectItemsAt: [indexPath])
                         collectionView.selectItems(at: [indexPath], scrollPosition: [])
-                        collectionView.delegate?.collectionView?(collectionView, didSelectItemsAt: [indexPath])
                         setLoadThumbPriority(ifNeedVisable: true)
                     }
-                }else{
+                } else {
                     fileDB.unlock()
                 }
             }
@@ -979,35 +978,52 @@ extension ViewController {
         // 粘贴或移动后选中变更的文件
         // Select changed files after paste or move
         if !publicVar.filesForLocateAfterChange.isEmpty {
-            let targetPaths = publicVar.filesForLocateAfterChange
-            publicVar.filesForLocateAfterChange.removeAll()
+            let elapsed = Double(DispatchTime.now().uptimeNanoseconds - publicVar.filesForLocateAfterChangeTime.uptimeNanoseconds) / 1_000_000_000
+            if elapsed > elapsedThreshold {
+                publicVar.filesForLocateAfterChange.removeAll()
+                return
+            }
             
-            let targetPathSet = Set(targetPaths.map { $0.hasSuffix("/") ? String($0.dropLast()) : $0 })
-            var indexPaths: [IndexPath] = []
+            let targetPathSet = Set(publicVar.filesForLocateAfterChange.map {
+                $0.hasSuffix("/") ? String($0.dropLast()) : $0
+            })
+            var matchedIndexPaths = [IndexPath]()
+            
             fileDB.lock()
-            if let files = fileDB.db[SortKeyDir(curFolder)]?.files {
-                for (offset, element) in files.enumerated() {
-                    let filePath = element.0.path
-                    let normalizedPath = filePath.hasSuffix("/") ? String(filePath.dropLast()) : filePath
-                    if targetPathSet.contains(normalizedPath) {
-                        indexPaths.append(IndexPath(item: offset, section: 0))
+            if let files = dirFiles {
+                if let checkRange = checkRange, !isFinal {
+                    for indexPath in checkRange {
+                        guard indexPath.item < curItemCount else { continue }
+                        if let element = files.elementSafe(atOffset: indexPath.item) {
+                            let normalizedPath = element.0.path.hasSuffix("/") ? String(element.0.path.dropLast()) : element.0.path
+                            if targetPathSet.contains(normalizedPath) {
+                                matchedIndexPaths.append(indexPath)
+                            }
+                        }
+                    }
+                } else {
+                    for (offset, element) in files.enumerated() {
+                        guard offset < curItemCount else { continue }
+                        let normalizedPath = element.0.path.hasSuffix("/") ? String(element.0.path.dropLast()) : element.0.path
+                        if targetPathSet.contains(normalizedPath) {
+                            matchedIndexPaths.append(IndexPath(item: offset, section: 0))
+                        }
                     }
                 }
             }
             fileDB.unlock()
             
-            if !indexPaths.isEmpty {
-                let indexPathSet = Set(indexPaths)
-                collectionView.deselectAll(nil)
-                collectionView.reloadData()
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    collectionView.scrollToItems(at: [indexPaths[0]], scrollPosition: .nearestHorizontalEdge)
-                    collectionView.delegate?.collectionView?(collectionView, shouldSelectItemsAt: indexPathSet)
-                    collectionView.selectItems(at: indexPathSet, scrollPosition: [])
-                    collectionView.delegate?.collectionView?(collectionView, didSelectItemsAt: indexPathSet)
+            if !matchedIndexPaths.isEmpty {
+                let isFirstMatch = collectionView.selectionIndexPaths.isEmpty
+                collectionView.selectItems(at: Set(matchedIndexPaths), scrollPosition: [])
+                if isFirstMatch {
+                    collectionView.scrollToItems(at: [matchedIndexPaths[0]], scrollPosition: .nearestHorizontalEdge)
                     setLoadThumbPriority(ifNeedVisable: true)
                 }
+            }
+            
+            if isFinal {
+                publicVar.filesForLocateAfterChange.removeAll()
             }
         }
     }
@@ -1081,6 +1097,7 @@ extension ViewController {
         if stackDeep == 0,
            direction == .up || direction == .down || direction == .back {
             publicVar.folderStepForLocate.insert((fileDB.curFolder,direction), at: 0)
+            publicVar.folderStepForLocateTime = .now()
             if publicVar.folderStepForLocate.count > 10 {
                 publicVar.folderStepForLocate.removeLast()
             }

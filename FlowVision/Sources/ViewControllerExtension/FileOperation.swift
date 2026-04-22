@@ -138,6 +138,7 @@ extension ViewController {
                         try FileManager.default.createDirectory(at: newFolderURL, withIntermediateDirectories: true, attributes: nil)
                         log("Successfully created folder: \(newFolderURL.path)")
                         publicVar.filesForLocateAfterChange = [newFolderURL.absoluteString]
+                        publicVar.filesForLocateAfterChangeTime = .now()
                         return (true,newFolderURL)
                     } catch {
                         log("Failed to create folder: \(error)", level: .error)
@@ -217,6 +218,7 @@ extension ViewController {
                         
                         log("Successfully created text file: \(newFileURL.path)")
                         publicVar.filesForLocateAfterChange = [newFileURL.absoluteString]
+                        publicVar.filesForLocateAfterChangeTime = .now()
                         return (true,newFileURL)
                     } catch {
                         log("Failed to create text file: \(error)", level: .error)
@@ -243,6 +245,7 @@ extension ViewController {
             
             if let newFolderURL = newFolderURL {
                 publicVar.filesForLocateAfterChange = [newFolderURL.absoluteString]
+                publicVar.filesForLocateAfterChangeTime = .now()
             }
             
             // 还原剪贴板内容
@@ -447,6 +450,7 @@ extension ViewController {
             if !successfulDestURLs.isEmpty {
                 triggerFinderSound()
                 publicVar.filesForLocateAfterChange = successfulDestURLs
+                publicVar.filesForLocateAfterChangeTime = .now()
                 var ifRefresh = true
                 if publicVar.isRecursiveMode || curFolder.hasPrefix("file:///VirtualFinderTagsFolder") {
                     fileDB.lock()
@@ -737,6 +741,7 @@ extension ViewController {
             if !successfulDestURLs.isEmpty {
                 triggerFinderSound()
                 publicVar.filesForLocateAfterChange = successfulDestURLs
+                publicVar.filesForLocateAfterChangeTime = .now()
                 // 移动完成后清空通用剪贴板，防止再次粘贴时操作已不存在的源文件
                 // Clear general pasteboard after move to prevent pasting non-existent source files
                 if pasteboard === NSPasteboard.general {
