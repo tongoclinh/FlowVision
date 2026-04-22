@@ -1659,7 +1659,7 @@ class LargeImageView: NSView {
         // 暂停/恢复视频
         // Pause/resume video
         if !(getViewController(self)!.publicVar.isRightMouseDown) && isKeyWindowWhenMouseDown {
-            if file.type == .video {
+            if file.type == .video && getViewController(self)!.publicVar.isInLargeViewAfterAnimate {
                 if videoPreventDoubleClickOpenPauseFlag {
                     videoPreventDoubleClickOpenPauseFlag = false
                     return

@@ -510,7 +510,7 @@ extension ViewController {
                         closeLargeImage(0)
                         return nil
                     }else{
-                        if let indexPath = collectionView.selectionIndexPaths.first {
+                        if let indexPath = collectionView.selectionIndexPaths.min() {
                             if publicVar.isCollectionViewFirstResponder{
                                 openLargeImage(indexPath)
                                 return nil
@@ -531,7 +531,7 @@ extension ViewController {
                     }
                     return nil
                 }else{
-                    if let indexPath = collectionView.selectionIndexPaths.first {
+                    if let indexPath = collectionView.selectionIndexPaths.min() {
                         if publicVar.isCollectionViewFirstResponder{
                             openLargeImage(indexPath)
                             return nil

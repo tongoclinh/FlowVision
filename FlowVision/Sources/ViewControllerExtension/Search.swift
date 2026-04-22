@@ -220,7 +220,7 @@ extension ViewController {
         
         // 获取当前选中的索引
         // Get currently selected index
-        let currentSelectedIndex = collectionView.selectionIndexPaths.first?.item ?? -1
+        let currentSelectedIndex = collectionView.selectionIndexPaths.min()?.item ?? -1
         
         fileDB.lock()
         let files = fileDB.db[SortKeyDir(fileDB.curFolder)]?.files ?? [:]
@@ -228,7 +228,7 @@ extension ViewController {
         // 检查当前选中项是否符合搜索条件
         // Check if currently selected item matches search condition
         if !firstMatch,
-           let currentIndex = collectionView.selectionIndexPaths.first?.item,
+           let currentIndex = collectionView.selectionIndexPaths.min()?.item,
            let currentFileName = getFileNameForSearch(path: files.element(atOffset: currentIndex).1.path),
            isSearchMatch(fileName: currentFileName, searchText: searchText, forceUseRegex: forceUseRegex) {
             if isEnterKey {
