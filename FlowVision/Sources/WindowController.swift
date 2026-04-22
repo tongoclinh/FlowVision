@@ -1165,15 +1165,32 @@ extension WindowController: NSToolbarDelegate {
         
         let popover = NSPopover()
         popover.contentViewController = favVC
-        popover.behavior = .transient
+        // Anchor to window contentView so auto-hiding toolbar won't immediately dismiss it.
+        popover.behavior = .semitransient
         popover.animates = false
         popover.contentSize = NSSize(width: 400, height: 600)
         favVC.popover = popover
         
         self.favoritesPopover = popover
         
-        if let button = sender as? NSButton {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        guard let window = self.window, let contentView = window.contentView else { return }
+        
+        // Toolbar items sit above contentView; converting the button rect into contentView coords
+        // often lands outside bounds, and NSPopover then won't appear. Clamp to the visible top edge.
+        let b = contentView.bounds
+        let targetRectInContentView: NSRect
+        if let button = sender as? NSButton, button.window === window {
+            let rectInWindow = button.convert(button.bounds, to: nil)
+            var r = contentView.convert(rectInWindow, from: nil)
+            if !b.intersects(r) {
+                let midX = min(max(r.midX, b.minX + 20), b.maxX - 20)
+                r = contentView.isFlipped
+                    ? NSRect(x: midX - 0.5, y: b.minY + 1, width: 1, height: 1)
+                    : NSRect(x: midX - 0.5, y: b.maxY - 1, width: 1, height: 1)
+            }
+            targetRectInContentView = r
+            let preferredEdge: NSRectEdge = contentView.isFlipped ? .maxY : .minY
+            popover.show(relativeTo: targetRectInContentView, of: contentView, preferredEdge: preferredEdge)
         }
     }
     
