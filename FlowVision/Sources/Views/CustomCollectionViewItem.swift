@@ -565,7 +565,7 @@ class CustomCollectionViewItem: NSCollectionViewItem {
     }
     
     func setTooltip(){
-        if !getViewController(collectionView!)!.publicVar.isInLargeView {
+        if globalVar.collectionViewItemShowTooltip && !getViewController(collectionView!)!.publicVar.isInLargeView {
             if file.isDir {
                 self.view.toolTip = generateTooltip(filePath: file.path.removingPercentEncoding!, type: file.type, fileSize: nil, imageSize: nil, creationDate: file.createDate, modificationDate: file.modDate, addDate: file.addDate)
             }else{

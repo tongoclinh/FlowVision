@@ -217,6 +217,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenuItemVa
         if let enhancedIndexEnabled = UserDefaults.standard.value(forKey: "enhancedIndexEnabled") as? Bool {
             globalVar.enhancedIndexEnabled = enhancedIndexEnabled
         }
+        if let collectionViewItemShowTooltip = UserDefaults.standard.value(forKey: "collectionViewItemShowTooltip") as? Bool {
+            globalVar.collectionViewItemShowTooltip = collectionViewItemShowTooltip
+        }
         globalVar.myFavoritesArray = defaults.array(forKey: "globalVar.myFavoritesArray") as? [String] ?? [String]()
         
         if let savedLabels = UserDefaults.standard.array(forKey: CustomTagView.userDefaultsKey) as? [[String: Any]] {

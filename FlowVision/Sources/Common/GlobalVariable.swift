@@ -104,6 +104,7 @@ class GlobalVar{
     var dirTreeAutoExpand = true
     var largeImageViewShowTagsAndRating = true
     var enhancedIndexEnabled = true
+    var collectionViewItemShowTooltip = true
     
     // 可记忆设置变量
     // Rememberable settings variables
