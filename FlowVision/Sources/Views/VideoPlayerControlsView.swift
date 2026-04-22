@@ -8,6 +8,31 @@ import Cocoa
 import AVFoundation
 import AVKit
 
+// MARK: - ClickableSlider
+
+private class ClickableSlider: NSSlider {
+    override func mouseDown(with event: NSEvent) {
+        guard let cell = cell as? NSSliderCell else {
+            super.mouseDown(with: event)
+            return
+        }
+        // Jump to the clicked position immediately
+        let point = convert(event.locationInWindow, from: nil)
+        let barRect = cell.barRect(flipped: isFlipped)
+        // Account for the knob inset used in CustomVolumeSliderCell.drawBar
+        let knobSize: CGFloat = 10
+        let halfKnob = knobSize / 2
+        let visibleBarX = barRect.origin.x + halfKnob
+        let visibleBarWidth = barRect.width - knobSize
+        let fraction = (point.x - visibleBarX) / visibleBarWidth
+        let clampedFraction = max(0.0, min(1.0, Double(fraction)))
+        doubleValue = minValue + clampedFraction * (maxValue - minValue)
+        sendAction(action, to: target)
+        // Continue with drag tracking
+        super.mouseDown(with: event)
+    }
+}
+
 // MARK: - CustomVolumeSliderCell
 
 private class CustomVolumeSliderCell: NSSliderCell {
@@ -39,13 +64,23 @@ private class CustomVolumeSliderCell: NSSliderCell {
         }
     }
     
-    override func drawKnob(_ knobRect: NSRect) {
-        let knobOrigin = NSPoint(
-            x: knobRect.midX - knobSize / 2,
-            y: knobRect.midY - knobSize / 2
+    override func knobRect(flipped: Bool) -> NSRect {
+        let bar = barRect(flipped: flipped)
+        let halfKnob = knobSize / 2
+        let trackX = bar.origin.x + halfKnob
+        let trackWidth = bar.width - knobSize
+        let fraction = CGFloat((doubleValue - minValue) / (maxValue - minValue))
+        let knobCenterX = trackX + trackWidth * fraction
+        return NSRect(
+            x: knobCenterX - halfKnob,
+            y: bar.midY - halfKnob,
+            width: knobSize,
+            height: knobSize
         )
-        let rect = NSRect(origin: knobOrigin, size: NSSize(width: knobSize, height: knobSize))
-        let path = NSBezierPath(ovalIn: rect)
+    }
+
+    override func drawKnob(_ knobRect: NSRect) {
+        let path = NSBezierPath(ovalIn: knobRect)
         knobColor.setFill()
         path.fill()
     }
@@ -245,7 +280,7 @@ class VideoPlayerControlsView: NSView {
         volumeSliderContainer.translatesAutoresizingMaskIntoConstraints = false
         addSubview(volumeSliderContainer)
         
-        volumeSlider = NSSlider(value: Double(globalVar.videoVolume), minValue: 0, maxValue: 1, target: self, action: #selector(volumeSliderChanged(_:)))
+        volumeSlider = ClickableSlider(value: Double(globalVar.videoVolume), minValue: 0, maxValue: 1, target: self, action: #selector(volumeSliderChanged(_:)))
         volumeSlider.cell = CustomVolumeSliderCell()
         volumeSlider.minValue = 0
         volumeSlider.maxValue = 1
