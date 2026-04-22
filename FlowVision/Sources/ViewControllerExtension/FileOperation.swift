@@ -457,6 +457,17 @@ extension ViewController {
                     ifRefresh = fileDB.db[SortKeyDir(fileDB.curFolder)]?.files.count ?? 0 <= RESET_VIEW_FILE_NUM_THRESHOLD
                     fileDB.unlock()
                 }
+                if !destinationURL.absoluteString.hasPrefix(curFolder)
+                    && successfulDestURLs.allSatisfy({ urlStr in
+                        if let url = URL(string: urlStr) {
+                            var isDir: ObjCBool = false
+                            FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+                            return !isDir.boolValue
+                        }
+                        return false
+                    }) {
+                    ifRefresh = false
+                }
                 if ifRefresh {
                     scheduledRefresh()
                 }
