@@ -1413,6 +1413,46 @@ extension ViewController {
                     showInformationLong(title: NSLocalizedString("File Info", comment: "文件信息"), message: text, width: 400)
                     
                     return
+                } else {
+                    let targetUrl = url
+                    
+                    var folderInfoData: [(String, Any)] = []
+
+                    if isAlias {
+                        folderInfoData.append((NSLocalizedString("Alias Type", comment: "替身类型"), aliasTypeLabel))
+                        folderInfoData.append((NSLocalizedString("Original Path", comment: "原始路径"), "\u{2066}" + resolvedUrl.path + "\u{2069}"))
+                    }
+                    
+                    folderInfoData.append((NSLocalizedString("Folder Path", comment: "文件夹路径"), "\u{2066}" + targetUrl.path + "\u{2069}"))
+                    folderInfoData.append((NSLocalizedString("Folder Name", comment: "文件夹名称"), targetUrl.lastPathComponent))
+                    
+                    if let creationDate = (try? targetUrl.resourceValues(forKeys: [.creationDateKey]).creationDate) {
+                        folderInfoData.append((NSLocalizedString("Creation Date", comment: "创建日期"), formatDateToCurrentTimeZone(creationDate)))
+                    }
+                    if let modDate = (try? targetUrl.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) {
+                        folderInfoData.append((NSLocalizedString("Modification Date", comment: "修改日期"), formatDateToCurrentTimeZone(modDate)))
+                    }
+                    if let addDate = (try? targetUrl.resourceValues(forKeys: [.addedToDirectoryDateKey]).addedToDirectoryDate) {
+                        folderInfoData.append((NSLocalizedString("Added Date", comment: "添加日期"), formatDateToCurrentTimeZone(addDate)))
+                    }
+                    
+                    let separator = "--------------------"
+                    let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+                    let maxKeyLength = folderInfoData.map { $0.0.size(withAttributes: [.font: font]).width }.max() ?? 0
+                    let formattedLines = folderInfoData.map { (key, value) -> String in
+                        let keyLength = key.size(withAttributes: [.font: font]).width
+                        let padding = String(repeating: " ", count: Int((maxKeyLength - keyLength) / " ".size(withAttributes: [.font: font]).width))
+                        return "\(key):\(padding) \(value)"
+                    }
+                    var text = formattedLines.joined(separator: "\n")
+                    
+                    let result = FolderStatisticInfo()
+                    getFolderStatistic(resolvedUrl, result: result)
+                    text += "\n" + separator + "\n" + result.description
+                    
+                    showInformationLong(title: NSLocalizedString("Folder Info", comment: "文件夹信息"), message: text, width: 400)
+                    
+                    return
                 }
             }
         }
