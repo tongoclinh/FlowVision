@@ -11,6 +11,14 @@ class CustomPathControl: NSPathControl, NSMenuDelegate {
     private var eventMonitor: Any?
     private var highlightView: NSView?
     private var rightClickedURL: URL?
+    private weak var dragHighlightedCell: NSPathComponentCell?
+
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        // 注册接受文件URL拖拽（仅作为拖拽目标，不支持拖拽出）
+        // Register for accepting file URL drops (drop target only, no drag-out support)
+        registerForDraggedTypes([.fileURL] + NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) })
+    }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -242,6 +250,118 @@ class CustomPathControl: NSPathControl, NSMenuDelegate {
 
     func menuDidClose(_ menu: NSMenu) {
         removeHighlight()
+    }
+
+    // MARK: - Drag Destination
+
+    /// 根据拖拽位置定位到的路径段及其目标URL
+    /// Locate the path component cell and its target URL for the drag location
+    private func componentCellAndURL(for sender: NSDraggingInfo) -> (NSPathComponentCell, URL)? {
+        let location = sender.draggingLocation
+        guard let cell = componentCell(at: location) else { return nil }
+        if let url = urlForCell(cell) {
+            return (cell, url)
+        }
+        // 最后一个路径项的myUrl为nil，使用当前文件夹路径
+        // Last path item has nil myUrl, use current folder path
+        guard let vc = self.window?.contentViewController as? ViewController else { return nil }
+        vc.fileDB.lock()
+        let curFolder = vc.fileDB.curFolder
+        vc.fileDB.unlock()
+        guard let url = URL(string: curFolder) else { return nil }
+        return (cell, url)
+    }
+
+    private func updateDragHighlight(for cell: NSPathComponentCell?) {
+        if dragHighlightedCell === cell { return }
+        removeHighlight()
+        dragHighlightedCell = cell
+        if let cell = cell {
+            showHighlight(for: cell)
+        }
+    }
+
+    private func dragOperation(for sender: NSDraggingInfo) -> NSDragOperation {
+        guard let (cell, targetUrl) = componentCellAndURL(for: sender) else {
+            updateDragHighlight(for: nil)
+            return []
+        }
+
+        // 不允许拖拽到虚拟文件夹
+        // Disallow dropping onto virtual folders
+        let urlString = targetUrl.absoluteString
+        if urlString.hasPrefix("file:///VirtualFinderTagsFolder") || urlString.contains("FlowVisionTitleFolder") {
+            updateDragHighlight(for: nil)
+            return []
+        }
+
+        // 拖拽源就是目标本身、或源文件已经位于目标目录内时不允许
+        // Disallow when source equals target or source already lives inside the target directory
+        if let data = sender.draggingPasteboard.data(forType: .fileURL),
+           let sourceUrl = URL(dataRepresentation: data, relativeTo: nil),
+           sourceUrl == targetUrl || sourceUrl.deletingLastPathComponent().path == targetUrl.path {
+            updateDragHighlight(for: nil)
+            return []
+        }
+
+        updateDragHighlight(for: cell)
+        return .move
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        return dragOperation(for: sender)
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        return dragOperation(for: sender)
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        updateDragHighlight(for: nil)
+    }
+
+    override func draggingEnded(_ sender: NSDraggingInfo) {
+        updateDragHighlight(for: nil)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        defer { updateDragHighlight(for: nil) }
+
+        guard let (_, targetUrl) = componentCellAndURL(for: sender) else { return false }
+        guard let viewController = self.window?.contentViewController as? ViewController else { return false }
+
+        let pasteboard = sender.draggingPasteboard
+
+        // 拖拽源就是目标本身、或源文件已经位于目标目录内时不允许
+        // Disallow when source equals target or source already lives inside the target directory
+        if let data = pasteboard.data(forType: .fileURL),
+           let sourceUrl = URL(dataRepresentation: data, relativeTo: nil),
+           sourceUrl == targetUrl || sourceUrl.deletingLastPathComponent().path == targetUrl.path {
+            return false
+        }
+
+        if viewController.handleFilePromiseDrop(targetURL: targetUrl, pasteboard: pasteboard) {
+            return true
+        }
+
+        // 同窗口内拖拽时弹出确认对话框防止误操作
+        // Show confirmation when dragging within the same window to prevent mistakes
+        if let sourceView = sender.draggingSource as? NSView,
+           sourceView.window == self.window,
+           let data = pasteboard.data(forType: .fileURL),
+           let sourceUrl = URL(dataRepresentation: data, relativeTo: nil) {
+            let sourceName = sourceUrl.lastPathComponent
+            let confirmed = showConfirmation(
+                title: NSLocalizedString("Move Items", comment: "移动项目"),
+                message: String(format: NSLocalizedString("Are you sure you want to move xxx to xxx?", comment: "确定要移动 xxx 到 xxx?"), sourceName, targetUrl.lastPathComponent)
+            )
+            if !confirmed {
+                return false
+            }
+        }
+
+        viewController.handleMove(targetURL: targetUrl, pasteboard: pasteboard)
+        return true
     }
 }
 
