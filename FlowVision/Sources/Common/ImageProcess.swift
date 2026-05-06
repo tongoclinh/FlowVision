@@ -2118,6 +2118,15 @@ func formatExifData(_ imageProperties: [String: Any], isVideo: Bool, needWarp: B
 }
 
 func readRating(from imageURL: URL) -> Int? {
+
+    // RAW 格式（ORF/CR2/ARW 等）无法被 ImageIO 写回，评级存放在同名 .xmp sidecar 文件中，暂不支持
+    // DNG 是 TIFF 容器，ImageIO 一般能读到嵌入的 XMP，因此放行；其余 RAW 直接 reject 以避免无谓的元数据解析
+    let unsupportedRawExtensions = globalVar.HandledRawExtensions.filter { $0 != "dng" }
+    if unsupportedRawExtensions.contains(imageURL.pathExtension.lowercased()) {
+        print("[readRating] RAW 格式暂不支持，inputURL: \(imageURL.path)")
+        return nil
+    }
+
     guard let imageSource = CGImageSourceCreateWithURL(imageURL as CFURL, nil) else { return nil }
     guard let metadata = CGImageSourceCopyMetadataAtIndex(imageSource, 0, nil) else { return nil }
     
@@ -2135,34 +2144,85 @@ func readRating(from imageURL: URL) -> Int? {
 }
 
 func writeRating(inputURL: URL, outputURL: URL, rating: Int) -> Bool {
+
+    // RAW 格式（ORF/CR2/ARW 等）无法被 ImageIO 写回，评级存放在同名 .xmp sidecar 文件中，暂不支持
+    if globalVar.HandledRawExtensions.contains(inputURL.pathExtension.lowercased()) {
+        print("[writeRating] RAW 格式暂不支持，inputURL: \(inputURL.path)")
+        return false
+    }
+
     // SMB 等网络盘在覆盖写入后有时会把文件标成隐藏，先记下原始状态并在写入后恢复
     let originalIsHidden = (try? inputURL.resourceValues(forKeys: [.isHiddenKey]))?.isHidden ?? false
 
-    guard let imageSource = CGImageSourceCreateWithURL(inputURL as CFURL, nil) else { return false }
-    guard let image = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else { return false }
-    guard let metadata = CGImageSourceCopyMetadataAtIndex(imageSource, 0, nil) else { return false }
-    guard let mutableMetadata = CGImageMetadataCreateMutableCopy(metadata) else { return false }
-    
-    let namespace = "http://ns.adobe.com/xap/1.0/"
+    guard let imageSource = CGImageSourceCreateWithURL(inputURL as CFURL, nil) else {
+        print("[writeRating] 无法创建 CGImageSource，inputURL: \(inputURL.path)")
+        return false
+    }
+    guard let typeId = CGImageSourceGetType(imageSource) else {
+        print("[writeRating] 无法获取图片类型，inputURL: \(inputURL.path)")
+        return false
+    }
+    guard let metadata = CGImageSourceCopyMetadataAtIndex(imageSource, 0, nil) else {
+        print("[writeRating] 无法读取图片元数据，inputURL: \(inputURL.path)")
+        return false
+    }
+    guard let mutableMetadata = CGImageMetadataCreateMutableCopy(metadata) else {
+        print("[writeRating] 无法创建可写元数据副本，inputURL: \(inputURL.path)")
+        return false
+    }
+
     let prefix = "xmp"
     let key = "Rating"
-    
-    // 在使用自定义命名空间时需要
-//    guard CGImageMetadataRegisterNamespaceForPrefix(mutableMetadata, namespace as CFString, prefix as CFString, nil) else { return }
-    
+
     if rating == 0 {
         // 0 评级：移除现有 Rating 标签（如果存在），而不是写入 0
         CGImageMetadataRemoveTagWithPath(mutableMetadata, nil, "\(prefix):\(key)" as CFString)
     } else {
         let value = rating as CFNumber
-        guard CGImageMetadataSetValueWithPath(mutableMetadata, nil, "\(prefix):\(key)" as CFString, value) else { return false}
+        guard CGImageMetadataSetValueWithPath(mutableMetadata, nil, "\(prefix):\(key)" as CFString, value) else {
+            print("[writeRating] 无法写入 Rating 元数据，rating: \(rating)，inputURL: \(inputURL.path)")
+            return false
+        }
     }
-    
-    guard let imageDestination = CGImageDestinationCreateWithURL(outputURL as CFURL, CGImageSourceGetType(imageSource)!, 1, nil) else { return false }
-    
-    CGImageDestinationAddImageAndMetadata(imageDestination, image, mutableMetadata, nil)
-    
-    guard CGImageDestinationFinalize(imageDestination) else { return false }
+
+    // 先写到同目录下的隐藏临时文件，确认成功后再原子替换原文件
+    // 直接覆盖原文件在 SMB 等网络盘上一旦写入中断，原文件会被截断而损坏
+    let tempURL = makeRatingTempURL(for: outputURL)
+
+    guard let imageDestination = CGImageDestinationCreateWithURL(tempURL as CFURL, typeId, 1, nil) else {
+        print("[writeRating] 无法创建 CGImageDestination，tempURL: \(tempURL.path)")
+        return false
+    }
+
+    // 关键：用 CopyImageSource 只重写元数据段，原始压缩像素数据按字节拷贝
+    // 不再走「解码 -> 重新有损编码」的路径，避免每次评级都让 JPEG 画质衰减、
+    // 也避免重新编码时色彩空间/量化表/chroma subsampling 改变导致的红紫色块异常
+    let options: [CFString: Any] = [
+        kCGImageDestinationMetadata: mutableMetadata,
+        kCGImageDestinationMergeMetadata: false,
+    ]
+    var cfError: Unmanaged<CFError>?
+    let copyOK = CGImageDestinationCopyImageSource(imageDestination, imageSource, options as CFDictionary, &cfError)
+    if !copyOK {
+        let errorDesc = cfError?.takeRetainedValue().localizedDescription ?? "未知错误"
+        print("[writeRating] CGImageDestinationCopyImageSource 失败：\(errorDesc)，tempURL: \(tempURL.path)")
+        try? FileManager.default.removeItem(at: tempURL)
+        return false
+    }
+
+    // 原子替换：写完临时文件后再替换原文件
+    // 注意必须保证 tempURL 与 outputURL 同卷，否则 replaceItemAt 会回退到拷贝
+    do {
+        if FileManager.default.fileExists(atPath: outputURL.path) {
+            _ = try FileManager.default.replaceItemAt(outputURL, withItemAt: tempURL)
+        } else {
+            try FileManager.default.moveItem(at: tempURL, to: outputURL)
+        }
+    } catch {
+        print("[writeRating] 替换文件失败：\(error.localizedDescription)，outputURL: \(outputURL.path)")
+        try? FileManager.default.removeItem(at: tempURL)
+        return false
+    }
 
     // 写入后恢复原来的「隐藏」属性，避免 SMB 等网络盘把文件错误标成隐藏
     var values = URLResourceValues()
@@ -2170,6 +2230,39 @@ func writeRating(inputURL: URL, outputURL: URL, rating: Int) -> Bool {
     var tmpURL = outputURL
     try? tmpURL.setResourceValues(values)
     return true
+}
+
+/// 生成评级写入用的同目录隐藏临时文件 URL
+///
+/// 注意：绝大多数文件系统（APFS/HFS+/ext4/exFAT/NTFS/SMB）单个路径分量上限是 255 字节
+/// 完整 UUID 36 字符 + 固定后缀，最多会让原文件名「膨胀」49 字节
+/// 对中文/Emoji 文件名按 UTF-8 编码后很容易触发「文件名过长」错误
+/// 这里改用 8 字符随机串（碰撞概率足够低，且同目录下立刻被消费）
+/// 并在拼接后超限时按 UTF-8 安全截断原文件名
+private func makeRatingTempURL(for outputURL: URL) -> URL {
+    let outputDir = outputURL.deletingLastPathComponent()
+    let originalName = outputURL.lastPathComponent
+    let randomSuffix = String(UUID().uuidString.prefix(8))
+    let leading = "."
+    let suffix = ".rating-\(randomSuffix).tmp"
+
+    // 单个路径分量按字节算，留 5 字节余量给文件系统自身可能的开销
+    let maxBytes = 250
+    let overhead = leading.utf8.count + suffix.utf8.count
+
+    var baseName = originalName
+    if baseName.utf8.count + overhead > maxBytes {
+        let allowed = max(1, maxBytes - overhead)
+        var slice = Array(baseName.utf8).prefix(allowed)
+        // 多字节 UTF-8 字符可能在切分点被截断，回退到合法边界
+        while String(bytes: slice, encoding: .utf8) == nil && !slice.isEmpty {
+            slice = slice.dropLast()
+        }
+        baseName = String(bytes: slice, encoding: .utf8) ?? "f"
+    }
+
+    let tempName = leading + baseName + suffix
+    return outputDir.appendingPathComponent(tempName)
 }
 
 func distanceBetweenPoints(_ point1: NSPoint, _ point2: NSPoint) -> CGFloat {
