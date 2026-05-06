@@ -722,137 +722,157 @@ class LargeImageView: NSView {
             
             // 快照
             // Snapshot
-            if let snapshot = captureSnapshot(of: self) {
+            let snapshot = captureSnapshot(of: self)
+            if let snapshot = snapshot {
                 self.addSubview(snapshot)
                 snapshotQueue.append(snapshot)
+                
+                // DEBUG: 给快照视图加上明显的红色边框，方便录屏一帧帧分析
+                // 当前帧若有红色边框 = snapshot 已经在屏幕上；没有边框 = 看到的是 video / 黑帧
+                if false {
+                    snapshot.wantsLayer = true
+                    snapshot.layer?.borderColor = NSColor.red.cgColor
+                    snapshot.layer?.borderWidth = 8
+                }
             }
             
-            if reload && abPlayPositionA != nil && abPlayPositionB != nil {
-                showInfo(NSLocalizedString("A-B Loop Cancel", comment: "（视频）A-B循环取消"))
-            }
+            CATransaction.flush()
+            let task = DispatchWorkItem { [weak self] in
+                guard let self = self else { return }
+                
+                if reload && abPlayPositionA != nil && abPlayPositionB != nil {
+                    showInfo(NSLocalizedString("A-B Loop Cancel", comment: "（视频）A-B循环取消"))
+                }
 
-            if reload || reloadForAB {
-                restorePlayPosition = queuePlayer?.currentTime()
-                restorePlayURL = currentPlayingURL
-            }
-            
-            if let observer = videoEndObserver {
-                NotificationCenter.default.removeObserver(observer)
-                videoEndObserver = nil
-            }
-            playerLooper?.disableLooping()
-            playerLooper = nil
-            queuePlayer?.removeAllItems()
-            playerItem = nil
-            videoView.controlsStyle = .none
-            videoOrderId += 1
-            videoView.isHidden = false
-            pausedBySeek = false
-            isVideoMetadataUpdated = false
-            if !reloadForAB {
-                abPlayPositionA = nil
-                abPlayPositionB = nil
-            }
-            
-            // 读取元信息
-            // Read metadata
-            if getViewController(self)?.publicVar.isShowExif == true {
-                updateVideoMetadata(url: url)
-            }
+                if reload || reloadForAB {
+                    restorePlayPosition = queuePlayer?.currentTime()
+                    restorePlayURL = currentPlayingURL
+                }
+                
+                if let observer = videoEndObserver {
+                    NotificationCenter.default.removeObserver(observer)
+                    videoEndObserver = nil
+                }
+                playerLooper?.disableLooping()
+                playerLooper = nil
+                queuePlayer?.removeAllItems()
+                playerItem = nil
+                videoView.controlsStyle = .none
+                videoOrderId += 1
+                videoView.isHidden = false
+                pausedBySeek = false
+                isVideoMetadataUpdated = false
+                if !reloadForAB {
+                    abPlayPositionA = nil
+                    abPlayPositionB = nil
+                }
+                
+                // 读取元信息
+                // Read metadata
+                if getViewController(self)?.publicVar.isShowExif == true {
+                    updateVideoMetadata(url: url)
+                }
 
-            if let timeRange = getCommonTimeRange(url: url) {
-                playerItem = AVPlayerItem(url: url)
-                if let playerItem = playerItem,
-                   let queuePlayer = queuePlayer {
-                    
-                    // 根据 file.rotate 设置视频旋转角度
-                    // Set video rotation angle based on file.rotate
-                    let rotation: Double
-                    switch file.rotate {
-                        case 1: rotation = 90
-                        case 2: rotation = 180
-                        case 3: rotation = 270
-                        default: rotation = 0
-                    }
-                    
-                    if rotation != 0,
-                       let videoTrack = playerItem.asset.tracks(withMediaType: .video).first {
-                        let composition = AVMutableVideoComposition()
-                        composition.renderSize = rotation == 90 || rotation == 270 ?
-                            CGSize(width: videoTrack.naturalSize.height, height: videoTrack.naturalSize.width) :
-                            videoTrack.naturalSize
-                        composition.frameDuration = CMTime(value: 1, timescale: 30)
+                if let timeRange = getCommonTimeRange(url: url) {
+                    playerItem = AVPlayerItem(url: url)
+                    if let playerItem = playerItem,
+                       let queuePlayer = queuePlayer {
                         
-                        let instruction = AVMutableVideoCompositionInstruction()
-                        instruction.timeRange = CMTimeRange(start: .zero, duration: .positiveInfinity)
-                        
-                        let transformer = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTrack)
-                        var transform = CGAffineTransform.identity
-                        
-                        // 先平移再旋转，确保视频在正确位置
-                        // Translate first then rotate to ensure video is in correct position
-                        if rotation == 90 {
-                            transform = transform.translatedBy(x: videoTrack.naturalSize.height, y: 0)
-                            transform = transform.rotated(by: .pi/2)
-                        } else if rotation == 270 {
-                            transform = transform.translatedBy(x: 0, y: videoTrack.naturalSize.width)
-                            transform = transform.rotated(by: -.pi/2)
-                        } else if rotation == 180 {
-                            transform = transform.translatedBy(x: videoTrack.naturalSize.width, y: videoTrack.naturalSize.height)
-                            transform = transform.rotated(by: .pi)
+                        // 根据 file.rotate 设置视频旋转角度
+                        // Set video rotation angle based on file.rotate
+                        let rotation: Double
+                        switch file.rotate {
+                            case 1: rotation = 90
+                            case 2: rotation = 180
+                            case 3: rotation = 270
+                            default: rotation = 0
                         }
                         
-                        transformer.setTransform(transform, at: .zero)
-                        instruction.layerInstructions = [transformer]
-                        composition.instructions = [instruction]
-                        
-                        playerItem.videoComposition = composition
-                    }
-
-                    // 根据AB播放点计算最终的播放范围
-                    // Calculate final playback range based on AB playback points
-                    var finalTimeRange = timeRange
-                    if let positionA = abPlayPositionA?.seconds,
-                       let positionB = abPlayPositionB?.seconds,
-                       positionA < positionB {
-                        let start = CMTime(seconds: positionA, preferredTimescale: 600)
-                        let duration = CMTime(seconds: positionB - positionA, preferredTimescale: 600)
-                        finalTimeRange = CMTimeRange(start: start, duration: duration)
-                    }
-                    
-                    queuePlayer.insert(playerItem, after: nil)
-                    
-                    if globalVar.videoPlaySequentialPlay && abPlayPositionA == nil && abPlayPositionB == nil {
-                        // 列表播放模式：播放完当前视频后自动切换到下一个
-                        // List play mode: automatically switch to next video after current one finishes
-                        queuePlayer.actionAtItemEnd = .pause
-                        videoEndObserver = NotificationCenter.default.addObserver(
-                            forName: .AVPlayerItemDidPlayToEndTime,
-                            object: playerItem,
-                            queue: .main
-                        ) { [weak self] _ in
-                            guard let self = self else { return }
-                            getViewController(self)?.nextLargeImage(isShowReachEndPrompt: true, firstShowThumb: true)
+                        if rotation != 0,
+                           let videoTrack = playerItem.asset.tracks(withMediaType: .video).first {
+                            let composition = AVMutableVideoComposition()
+                            composition.renderSize = rotation == 90 || rotation == 270 ?
+                                CGSize(width: videoTrack.naturalSize.height, height: videoTrack.naturalSize.width) :
+                                videoTrack.naturalSize
+                            composition.frameDuration = CMTime(value: 1, timescale: 30)
+                            
+                            let instruction = AVMutableVideoCompositionInstruction()
+                            instruction.timeRange = CMTimeRange(start: .zero, duration: .positiveInfinity)
+                            
+                            let transformer = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTrack)
+                            var transform = CGAffineTransform.identity
+                            
+                            // 先平移再旋转，确保视频在正确位置
+                            // Translate first then rotate to ensure video is in correct position
+                            if rotation == 90 {
+                                transform = transform.translatedBy(x: videoTrack.naturalSize.height, y: 0)
+                                transform = transform.rotated(by: .pi/2)
+                            } else if rotation == 270 {
+                                transform = transform.translatedBy(x: 0, y: videoTrack.naturalSize.width)
+                                transform = transform.rotated(by: -.pi/2)
+                            } else if rotation == 180 {
+                                transform = transform.translatedBy(x: videoTrack.naturalSize.width, y: videoTrack.naturalSize.height)
+                                transform = transform.rotated(by: .pi)
+                            }
+                            
+                            transformer.setTransform(transform, at: .zero)
+                            instruction.layerInstructions = [transformer]
+                            composition.instructions = [instruction]
+                            
+                            playerItem.videoComposition = composition
                         }
-                    } else {
-                        queuePlayer.actionAtItemEnd = .advance
-                        playerLooper = AVPlayerLooper(player: queuePlayer, templateItem: playerItem, timeRange: finalTimeRange)
+
+                        // 根据AB播放点计算最终的播放范围
+                        // Calculate final playback range based on AB playback points
+                        var finalTimeRange = timeRange
+                        if let positionA = abPlayPositionA?.seconds,
+                           let positionB = abPlayPositionB?.seconds,
+                           positionA < positionB {
+                            let start = CMTime(seconds: positionA, preferredTimescale: 600)
+                            let duration = CMTime(seconds: positionB - positionA, preferredTimescale: 600)
+                            finalTimeRange = CMTimeRange(start: start, duration: duration)
+                        }
+                        
+                        queuePlayer.insert(playerItem, after: nil)
+                        
+                        if globalVar.videoPlaySequentialPlay && abPlayPositionA == nil && abPlayPositionB == nil {
+                            // 列表播放模式：播放完当前视频后自动切换到下一个
+                            // List play mode: automatically switch to next video after current one finishes
+                            queuePlayer.actionAtItemEnd = .pause
+                            videoEndObserver = NotificationCenter.default.addObserver(
+                                forName: .AVPlayerItemDidPlayToEndTime,
+                                object: playerItem,
+                                queue: .main
+                            ) { [weak self] _ in
+                                guard let self = self else { return }
+                                getViewController(self)?.nextLargeImage(isShowReachEndPrompt: true, firstShowThumb: true)
+                            }
+                        } else {
+                            queuePlayer.actionAtItemEnd = .advance
+                            playerLooper = AVPlayerLooper(player: queuePlayer, templateItem: playerItem, timeRange: finalTimeRange)
+                        }
+                        
+                        queuePlayer.rate = globalVar.videoPlaybackRate
+                        currentPlayingURL = url
+                        
+                        startPeriodicTimeObserver()
+                        
+                        checkPlayerItemStatus(id: videoOrderId)
                     }
-                    
-                    queuePlayer.rate = globalVar.videoPlaybackRate
-                    currentPlayingURL = url
-                    
-                    startPeriodicTimeObserver()
-                    
-                    checkPlayerItemStatus(id: videoOrderId)
+                }else{
+                    while snapshotQueue.count > 0{
+                        snapshotQueue.first??.removeFromSuperview()
+                        snapshotQueue.removeFirst()
+                    }
+                    currentPlayingURL = nil
+                    showUnsupportedVideoOverlay()
                 }
-            }else{
-                while snapshotQueue.count > 0{
-                    snapshotQueue.first??.removeFromSuperview()
-                    snapshotQueue.removeFirst()
-                }
-                currentPlayingURL = nil
-                showUnsupportedVideoOverlay()
+            }
+            
+            if snapshot == nil {
+                task.perform()
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.01, execute: task)
             }
         }
     }
