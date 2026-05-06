@@ -1226,7 +1226,12 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
             shortTitle = ROOT_NAME
             fullTitle = ROOT_NAME
         }
-        
+
+        if curFolder.hasPrefix("file:///VirtualFinderTagsFolder") {
+            shortTitle = shortTitle.replacingOccurrences(of: "VirtualFinderTagsFolder", with: NSLocalizedString("Finder Tags", comment: "Finder标签"))
+            fullTitle = fullTitle.replacingOccurrences(of: "VirtualFinderTagsFolder", with: NSLocalizedString("Finder Tags", comment: "Finder标签"))
+        }
+
 //        if publicVar.profile.getValue(forKey: "isWindowTitleUseFullPath") == "true" {
 //            publicVar.toolbarTitle = fullTitle
 //        }else{

@@ -938,7 +938,7 @@ func getImageThumb(url: URL, size oriSize: NSSize? = nil, refSize: NSSize? = nil
         let myOptions = [kCGImageSourceShouldCache : kCFBooleanFalse] as CFDictionary;
         
         guard let myImageSource = CGImageSourceCreateWithURL(url as NSURL, myOptions) else {
-            log("Image source is NULL.", level: .warn);
+            print("Failed when getImageThumb CGImageSourceCreateWithURL.");
             // return getFileTypeIcon(url: url)
             return nil
         }
@@ -964,7 +964,7 @@ func getImageThumb(url: URL, size oriSize: NSSize? = nil, refSize: NSSize? = nil
         }
         
         guard let scaledImage = CGImageSourceCreateThumbnailAtIndex(myImageSource,0,thumbnailOptions)else {
-            log("Thumbnail not created from image source.", level: .warn);
+            print("Failed when getImageThumb CGImageSourceCreateThumbnailAtIndex.");
             // return getFileTypeIcon(url: url)
             return nil
         };
@@ -1135,7 +1135,7 @@ func getResizedImage(url: URL, size oriSize: NSSize, rotate: Int = 0, isRawUseEm
     guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil),
           let image = CGImageSourceCreateImageAtIndex(imageSource, 0, nil)
     else {
-        print("Failed when imageSource:",url.absoluteString.removingPercentEncoding!)
+        print("Failed when getResizedImage imageSource:", url.absoluteString.removingPercentEncoding!)
         return nil
     }
 
@@ -1229,7 +1229,7 @@ func getResizedImage(url: URL, size oriSize: NSSize, rotate: Int = 0, isRawUseEm
         // 本来就不支持8bit以上图像
         // Images above 8bit are not supported anyway
         if image.bitsPerComponent <= 8 {
-            print("Failed when makeImage:",url.absoluteString.removingPercentEncoding!)
+            print("Failed when getResizedImage makeImage:", url.absoluteString.removingPercentEncoding!)
         }
         return getResizedImageUsingCI(url: url, size: size, rotate: rotate)
     }
@@ -1318,6 +1318,7 @@ func getResizedImageUsingCI(url: URL, size: NSSize? = nil, rotate: Int = 0, useH
         }
     }
     
+    print("Failed when getResizedImageUsingCI:", url.absoluteString.removingPercentEncoding!)
     return nil
 }
 

@@ -204,7 +204,7 @@ func getSystemVolumeName() -> String? {
         let resourceValues = try rootURL.resourceValues(forKeys: [.volumeNameKey])
         return resourceValues.volumeName
     } catch {
-        print("Error retrieving volume name: \(error)")
+        log("Error retrieving volume name: \(error)", level: .warn)
         return nil
     }
 }

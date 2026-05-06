@@ -3,7 +3,7 @@
 <h3 align="center">为macOS设计的瀑布流式图片浏览器</h3> 
 </p>
 
-[![](https://img.shields.io/github/release/netdcy/FlowVision.svg)](https://github.com/netdcy/FlowVision/releases/latest?color=blue "GitHub release") ![GitHub License](https://img.shields.io/github/license/netdcy/FlowVision?color=blue)
+[![](https://img.shields.io/github/release/netdcy/FlowVision.svg?color=blue)](https://github.com/netdcy/FlowVision/releases/latest "GitHub release") [![](https://img.shields.io/github/downloads/netdcy/FlowVision/total?color=blue)](https://github.com/netdcy/FlowVision/releases/latest "GitHub downloads") ![GitHub License](https://img.shields.io/github/license/netdcy/FlowVision?color=blue)
 
 ## 预览
 

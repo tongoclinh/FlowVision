@@ -18,7 +18,7 @@ extension ViewController {
     func scanFiles(at folderURL: URL, contents: inout [URL], properties: [URLResourceKey]) {
         let options: FileManager.DirectoryEnumerationOptions = publicVar.isShowHiddenFile ? [] : [.skipsHiddenFiles]
         let enumerator = FileManager.default.enumerator(at: folderURL, includingPropertiesForKeys: properties, options: options, errorHandler: { (url, error) -> Bool in
-            print("Error enumerating \(url): \(error.localizedDescription)")
+            log("Error enumerating \(url): \(error.localizedDescription)", level: .warn)
             return true
         })
         
@@ -1361,7 +1361,7 @@ extension ViewController {
                                         return jsonString
                                     }
                                 } catch {
-                                    print("JSON serialization error: \(error)")
+                                    log("JSON serialization error: \(error)", level: .warn)
                                 }
                                 return "{}"
                             } else {
@@ -1505,7 +1505,7 @@ extension ViewController {
         let options:FileManager.DirectoryEnumerationOptions = [] // [.skipsHiddenFiles]
         
         let enumerator = FileManager.default.enumerator(at: folderURL, includingPropertiesForKeys: properties, options: options, errorHandler: { (url, error) -> Bool in
-            print("Error enumerating \(url): \(error.localizedDescription)")
+            log("Error enumerating \(url): \(error.localizedDescription)", level: .warn)
             return true
         })
 
