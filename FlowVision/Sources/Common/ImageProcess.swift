@@ -2100,7 +2100,7 @@ func formatExifData(_ imageProperties: [String: Any], isVideo: Bool, needWarp: B
         }
     }
     
-    if formattedData.count>0 && formattedData.last!.0 == "-" {
+    if formattedData.count > 0 && formattedData.last!.0 == "-" {
         formattedData.removeLast()
     }
     

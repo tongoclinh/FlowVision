@@ -162,9 +162,9 @@ extension ViewController {
                     ratioHeight = globalVar.portableListHeightRatio
                 }
                 
-                if refRatio != nil {
-                    ratioWidth = refRatio!.0
-                    ratioHeight = refRatio!.1
+                if let refRatio = refRatio {
+                    ratioWidth = refRatio.0
+                    ratioHeight = refRatio.1
                 }
                 
                 // 计算目标窗口尺寸（可见区域的%）

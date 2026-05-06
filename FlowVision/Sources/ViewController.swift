@@ -782,7 +782,7 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
             if event.window != self.view.window {
                 return event
             }
-            if self.coreAreaView.frame.contains(event.locationInWindow) {
+            if true || self.coreAreaView.frame.contains(event.locationInWindow) {
                 if publicVar.isInLargeView {
                     self.largeImageView.rightMouseUp(with: event)
                 }else{
@@ -805,7 +805,7 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
             if event.window != self.view.window {
                 return event
             }
-            if self.coreAreaView.frame.contains(event.locationInWindow) {
+            if true || self.coreAreaView.frame.contains(event.locationInWindow) {
                 if publicVar.isInLargeView {
                     self.largeImageView.rightMouseDown(with: event)
                 }else{
@@ -828,7 +828,7 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
             if event.window != self.view.window {
                 return event
             }
-            if self.coreAreaView.frame.contains(event.locationInWindow) {
+            if true || self.coreAreaView.frame.contains(event.locationInWindow) {
                 if publicVar.isInLargeView {
                     self.largeImageView.rightMouseDragged(with: event)
                 }else{
@@ -1603,7 +1603,7 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
                             noThumbSizeDueToSchedule = true
                         }
                         
-                        if thumbSize != nil {
+                        if let thumbSize = thumbSize {
                             if i == 0 {
                                 let curTime = DispatchTime.now()
                                 let nanoTime = curTime.uptimeNanoseconds - startTime.uptimeNanoseconds
@@ -1611,7 +1611,7 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
                                 log("Time taken to start loading first image: \(timeInterval) seconds")
                             }
                             
-                            var revisedSize = NSSize(width: thumbSize!.width-2*publicVar.profile.ThumbnailBorderThickness, height: thumbSize!.height-2*publicVar.profile.ThumbnailBorderThickness-publicVar.profile.ThumbnailFilenamePadding)
+                            var revisedSize = NSSize(width: thumbSize.width-2*publicVar.profile.ThumbnailBorderThickness, height: thumbSize.height-2*publicVar.profile.ThumbnailBorderThickness-publicVar.profile.ThumbnailFilenamePadding)
                             if publicVar.profile.layoutType == .grid {
                                 var size = originalSize ?? DEFAULT_SIZE
                                 if size.width == 0 || size.height == 0 {size=DEFAULT_SIZE}
@@ -2189,10 +2189,11 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
         watchDispatchSource = DispatchSource.makeFileSystemObjectSource(fileDescriptor: watchFileDescriptor, eventMask: [.write,.link,.delete,.rename], queue: queue)
         watchDispatchSource?.setEventHandler { [weak self] in
             guard let self = self else { return }
-            
+            guard let watchDispatchSource = watchDispatchSource else { return }
+
             // 打印事件类型
             // Print event type
-            let event = watchDispatchSource!.data
+            let event = watchDispatchSource.data
             // logFileSystemEvent(event)
             
             // 计划刷新

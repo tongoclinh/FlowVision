@@ -1677,8 +1677,8 @@ class LargeImageView: NSView {
         if isInOcrState && !getViewController(self)!.publicVar.isRightMouseDown {return}
         
         let newLocation = self.convert(event.locationInWindow, from: nil)
-        if initialPos != nil{
-            if abs(initialPos!.x-newLocation.x) + abs(initialPos!.y-newLocation.y) > 2 {
+        if let initialPos = initialPos {
+            if abs(initialPos.x-newLocation.x) + abs(initialPos.y-newLocation.y) > 2 {
                 longPressZoomTimer?.invalidate()
                 longPressZoomTimer = nil
                 doNotPopRightMenu = true

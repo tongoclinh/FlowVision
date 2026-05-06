@@ -435,9 +435,9 @@ extension ViewController {
         let url=URL(string:file.path)!
         var fullTitle=url.lastPathComponent
         // fullTitle += " | " + readableFileSize(file.fileSize ?? 0)
-        if file.originalSize != nil {
-            if file.originalSize!.width != 0 {
-                // fullTitle += " | " + String(format: "%.0f", file.originalSize!.width) + " × " + String(format: "%.0f", file.originalSize!.height)
+        if let originalSize = file.originalSize {
+            if originalSize.width != 0 {
+                // fullTitle += " | " + String(format: "%.0f", originalSize.width) + " × " + String(format: "%.0f", originalSize.height)
             }
         }
         
