@@ -179,9 +179,18 @@ class SpineControlsBar: NSVisualEffectView {
         onToggleLoop?(isLooping)
     }
 
-    @objc private func animTapped(_ sender: NSButton) {
-        animButtons.forEach { $0.state = ($0 == sender) ? .on : .off }
-        onSelectAnimation?(sender.title)
+    @objc private func animTapped(_ sender: NSButton) { selectAnimation(sender) }
+
+    private func selectAnimation(_ button: NSButton) {
+        animButtons.forEach { $0.state = ($0 == button) ? .on : .off }
+        onSelectAnimation?(button.title)
+    }
+
+    func selectAdjacentAnimation(next: Bool) {
+        guard let idx = animButtons.firstIndex(where: { $0.state == .on }) else { return }
+        let newIdx = next ? idx + 1 : idx - 1
+        guard animButtons.indices.contains(newIdx) else { return }
+        selectAnimation(animButtons[newIdx])
     }
 
     @objc private func skinChanged() {

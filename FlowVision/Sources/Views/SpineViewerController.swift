@@ -12,6 +12,7 @@ class SpineViewerController: NSViewController {
     private var spineView: SpineUIView?
     private(set) var spineController: SpineController?
     private var controlsBar: SpineControlsBar?
+    private var interactionView: SpineInteractionView?
     private var updateTimer: Timer?
     private var isLooping = true
 
@@ -29,11 +30,27 @@ class SpineViewerController: NSViewController {
         view = NSView()
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.black.cgColor
+
+        let iv = SpineInteractionView()
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(iv)
+        NSLayoutConstraint.activate([
+            iv.topAnchor.constraint(equalTo: view.topAnchor),
+            iv.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            iv.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            iv.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        interactionView = iv
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         loadSpineModel()
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        view.window?.makeFirstResponder(interactionView)
     }
 
     private func loadSpineModel() {
@@ -73,6 +90,7 @@ class SpineViewerController: NSViewController {
                 let drawable = try await source.loadDrawable()
                 await MainActor.run {
                     guard self.view.window != nil else { return }
+                    let container = self.interactionView ?? self.view
                     let sv = SpineUIView(
                         from: .drawable(drawable),
                         controller: controller,
@@ -81,9 +99,10 @@ class SpineViewerController: NSViewController {
                         boundsProvider: SetupPoseBounds(),
                         backgroundColor: .black
                     )
-                    sv.frame = self.view.bounds
+                    sv.frame = container.bounds
                     sv.autoresizingMask = [.width, .height]
-                    self.view.addSubview(sv)
+                    container.addSubview(sv)
+                    self.interactionView?.setTarget(sv)
                     self.spineView = sv
                 }
             } catch {
@@ -140,6 +159,14 @@ class SpineViewerController: NSViewController {
         }
 
         self.controlsBar = bar
+
+        interactionView?.onPrevAnimation = { [weak self] in
+            self?.controlsBar?.selectAdjacentAnimation(next: false)
+        }
+        interactionView?.onNextAnimation = { [weak self] in
+            self?.controlsBar?.selectAdjacentAnimation(next: true)
+        }
+
         updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0/15, repeats: true) { [weak self] _ in
             guard let self, let entry = self.spineController?.animationState.getCurrent(trackIndex: 0)
             else { return }
@@ -173,6 +200,8 @@ class SpineViewerController: NSViewController {
         spineView = nil
         controlsBar?.removeFromSuperview()
         controlsBar = nil
+        interactionView?.removeFromSuperview()
+        interactionView = nil
         spineController = nil
     }
 

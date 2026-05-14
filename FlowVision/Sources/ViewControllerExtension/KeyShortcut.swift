@@ -882,6 +882,10 @@ extension ViewController {
                 return nil
             }
             
+            if currentSpineViewer != nil && ["-", "=", "+", "0", "[", "]"].contains(characters) && noModifierKey {
+                return event
+            }
+
             // 检查按键是否是 -、-(小键盘) 键
             // Check if key is -, -(numpad)
             if characters == "-" && noModifierKey {

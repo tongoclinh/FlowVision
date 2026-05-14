@@ -2047,7 +2047,9 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
     func handleScrollWheel(_ event: NSEvent) {
         // log("Trackpad:",event.scrollingDeltaY,event.scrollingDeltaX)
         // log("Wheel:",event.deltaY)
-        
+
+        if currentSpineViewer != nil { return }
+
         // 仅在大图模式下响应
         // Only respond in large view mode
         if largeImageView.isHidden {return}
