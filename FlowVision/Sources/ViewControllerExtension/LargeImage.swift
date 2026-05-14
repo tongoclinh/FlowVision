@@ -53,6 +53,8 @@ extension ViewController {
         // 停止自动播放
         // Stop auto-play
         stopAutoPlay()
+
+        dismissSpineViewer()
         
         // 隐藏首次使用提示
         // Hide first-time use hint
@@ -235,11 +237,12 @@ extension ViewController {
                 return
             }
             
-            if(url.hasDirectoryPath){
+            if item.file.type != .spine && url.hasDirectoryPath {
                 switchDirByDirection(direction: .zero, dest: item.file.path, stackDeep: 0)
             }
-            else if !globalVar.HandledImageAndRawExtensions.contains(url.pathExtension.lowercased()) &&
-                !(globalVar.useInternalPlayer && globalVar.HandledNativeSupportedVideoExtensions.contains(item.file.ext)) {
+            else if item.file.type != .spine
+                && !globalVar.HandledImageAndRawExtensions.contains(url.pathExtension.lowercased())
+                && !(globalVar.useInternalPlayer && globalVar.HandledNativeSupportedVideoExtensions.contains(item.file.ext)) {
                 NSWorkspace.shared.open(url)
             }else{
                 if largeImageView.isHidden {
@@ -322,7 +325,7 @@ extension ViewController {
             while nextLargeImagePos >= 0 {
                 nextLargeImagePos-=1
                 if let file = fileDB.db[SortKeyDir(curFolder)]!.files.elementSafe(atOffset: nextLargeImagePos)?.1,
-                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) {
+                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine {
                     ifFoundNextImage=true
                     break
                 }
@@ -333,7 +336,7 @@ extension ViewController {
             while nextLargeImagePos < totalCount-1 {
                 nextLargeImagePos+=1
                 if let file = fileDB.db[SortKeyDir(curFolder)]!.files.elementSafe(atOffset: nextLargeImagePos)?.1,
-                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) {
+                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine {
                     ifFoundNextImage=true
                     break
                 }
@@ -345,7 +348,7 @@ extension ViewController {
             while nextLargeImagePos < totalCount-1 {
                 nextLargeImagePos+=1
                 if let file = fileDB.db[SortKeyDir(curFolder)]!.files.elementSafe(atOffset: nextLargeImagePos)?.1,
-                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) {
+                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine {
                     ifFoundNextImage=true
                     break
                 }
@@ -357,7 +360,7 @@ extension ViewController {
             while nextLargeImagePos >= 0 {
                 nextLargeImagePos-=1
                 if let file = fileDB.db[SortKeyDir(curFolder)]!.files.elementSafe(atOffset: nextLargeImagePos)?.1,
-                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) {
+                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine {
                     ifFoundNextImage=true
                     break
                 }
@@ -930,6 +933,24 @@ extension ViewController {
             // Cancel previous large image load task
             largeImageLoadTask?.cancel()
 
+            if file.type == .spine {
+                dismissSpineViewer()
+                largeImageView.stopVideo()
+                largeImageView.imageView.isHidden = true
+
+                if let folderURL = URL(string: file.path) {
+                    let viewer = SpineViewerController(folderURL: folderURL)
+                    addChild(viewer)
+                    viewer.view.frame = largeImageView.bounds
+                    viewer.view.autoresizingMask = [.width, .height]
+                    largeImageView.addSubview(viewer.view)
+                    currentSpineViewer = viewer
+                }
+                return
+            }
+
+            dismissSpineViewer()
+
             // 判断是否是视频
             // Check if is video
             if file.type == .image {
@@ -1029,5 +1050,14 @@ extension ViewController {
             }
             
         }
+    }
+
+    func dismissSpineViewer() {
+        guard currentSpineViewer != nil else { return }
+        currentSpineViewer?.cleanup()
+        currentSpineViewer?.view.removeFromSuperview()
+        currentSpineViewer?.removeFromParent()
+        currentSpineViewer = nil
+        largeImageView.imageView.isHidden = false
     }
 }

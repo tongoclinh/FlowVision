@@ -302,6 +302,8 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
     var endTime = DispatchTime(uptimeNanoseconds: 0)
     
     
+    var currentSpineViewer: SpineViewerController?
+
     var initLargeImagePos = -1
     var currLargeImagePos = -1
     var fileDB = DatabaseModel()

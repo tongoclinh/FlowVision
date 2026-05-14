@@ -2999,6 +2999,7 @@
     },
     "AudioMetadata-Channels" : {
       "comment" : "声道数",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -3106,6 +3107,7 @@
     },
     "AudioMetadata-CodecLongName" : {
       "comment" : "编码器全名",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -5674,6 +5676,7 @@
     },
     "Close Other Tabs" : {
       "comment" : "关闭其它标签页",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -6958,6 +6961,7 @@
     },
     "Custom Zoom Ratio..." : {
       "comment" : "自定义缩放比例...",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -7065,6 +7069,7 @@
     },
     "Custom Zoom Step..." : {
       "comment" : "自定义缩放梯度...",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -8670,6 +8675,7 @@
     },
     "Empty" : {
       "comment" : "空",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -21510,6 +21516,7 @@
     },
     "next-sibling-of-parent" : {
       "comment" : "上级的平级下一个目录",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -25255,6 +25262,7 @@
     },
     "Portable Browsing Mode" : {
       "comment" : "便携浏览模式",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -26004,6 +26012,7 @@
     },
     "previous-sibling-of-parent" : {
       "comment" : "上级的平级上一个目录",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -41091,6 +41100,7 @@
     },
     "VideoMetadata-AvgFrameRate" : {
       "comment" : "平均帧率",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -41305,6 +41315,7 @@
     },
     "VideoMetadata-CodecLongName" : {
       "comment" : "编码器全名",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -42054,6 +42065,7 @@
     },
     "VideoMetadata-Height" : {
       "comment" : "高度",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -42268,6 +42280,7 @@
     },
     "VideoMetadata-Level" : {
       "comment" : "级别",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -42482,6 +42495,7 @@
     },
     "VideoMetadata-Profile" : {
       "comment" : "配置文件",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -42696,6 +42710,7 @@
     },
     "VideoMetadata-Width" : {
       "comment" : "宽度",
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {

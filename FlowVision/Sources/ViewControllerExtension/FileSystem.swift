@@ -369,7 +369,17 @@ extension ViewController {
         // If finding same level, ignore subdirectories
         if folderURL == initURL && sameLevel { subFolders.removeAll() }
         subFolders.sort { $0.lastPathComponent.lowercased().localizedStandardCompare($1.lastPathComponent.lowercased()) == .orderedAscending }
-        
+
+        // Detect Spine model folders and move them to file list
+        var spineFolderURLs = Set<URL>()
+        subFolders.removeAll { url in
+            if SpineDetector.isSpineFolder(url) {
+                spineFolderURLs.insert(url)
+                return true
+            }
+            return false
+        }
+
         // 过滤出需处理文件列表
         // Filter out files to process
         var filesUrlInFolder = [URL]()
@@ -436,11 +446,14 @@ extension ViewController {
         
         // 好像没必要排序
         // Seems no need to sort
+        for spineURL in spineFolderURLs.sorted(by: { $0.lastPathComponent.lowercased().localizedStandardCompare($1.lastPathComponent.lowercased()) == .orderedAscending }) {
+            filesUrlInFolder.append(spineURL)
+        }
         var filesInFolder = filesUrlInFolder.map{$0.absoluteString}
         let fileCount=filesInFolder.count
         for folder in subFolders {
             filesInFolder.append(folder.absoluteString+"_FolderMark")
-            
+
         }
         
         // 标记当前节点
@@ -524,12 +537,16 @@ extension ViewController {
             for (i,filePath) in filesInFolder.enumerated(){
                 var fileSortKey:SortKeyFile
                 let isDir: Bool
+                let isSpineEntry: Bool
                 if filePath.hasSuffix("_FolderMark") {
                     fileSortKey = SortKeyFile(String(filePath.dropLast("_FolderMark".count)), isDir: true, isInSameDir: isInSameDir, sortType: publicVar.profile.sortType, isSortFolderFirst: publicVar.profile.isSortFolderFirst, isSortUseFullPath: publicVar.profile.isSortUseFullPath, randomSeed: publicVar.randomSeed)
                     isDir = true
+                    isSpineEntry = false
                 }else{
-                    fileSortKey = SortKeyFile(filePath, isInSameDir: isInSameDir, sortType: publicVar.profile.sortType, isSortFolderFirst: publicVar.profile.isSortFolderFirst, isSortUseFullPath: publicVar.profile.isSortUseFullPath, randomSeed: publicVar.randomSeed)
-                    isDir = false
+                    let fileURL = URL(string: filePath)!
+                    isSpineEntry = spineFolderURLs.contains(fileURL)
+                    fileSortKey = SortKeyFile(filePath, isDir: isSpineEntry, isInSameDir: isInSameDir, sortType: publicVar.profile.sortType, isSortFolderFirst: publicVar.profile.isSortFolderFirst, isSortUseFullPath: publicVar.profile.isSortUseFullPath, randomSeed: publicVar.randomSeed)
+                    isDir = isSpineEntry
                 }
                 // 读取文件大小日期
                 // Read file size and dates
@@ -675,6 +692,8 @@ extension ViewController {
                     }else{
                         ele.1.type = .other
                     }
+                }else if let url = URL(string: ele.1.path), spineFolderURLs.contains(url) {
+                    ele.1.type = .spine
                 }else{
                     ele.1.type = .folder
                 }

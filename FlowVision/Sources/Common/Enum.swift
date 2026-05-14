@@ -7,7 +7,7 @@ import Foundation
 import Settings
 
 enum FileType: Int, Codable {
-    case image,video,other,folder,notSet,all
+    case image,video,other,folder,notSet,all,spine
 }
 
 enum RightMouseGestureDirection: Int, Codable {

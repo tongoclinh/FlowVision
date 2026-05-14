@@ -809,7 +809,12 @@ func getImageThumb(url: URL, size oriSize: NSSize? = nil, refSize: NSSize? = nil
     let size: NSSize? = oriSize != nil ? NSSize(width: round(oriSize!.width), height: round(oriSize!.height)) : nil
     
     if(url.hasDirectoryPath){
-        
+
+        if SpineDetector.isSpineFolder(url) {
+            return NSImage(systemSymbolName: "figure.run", accessibilityDescription: "Spine Model")
+                ?? NSImage(named: NSImage.folderName)
+        }
+
         var urls = [URL]()
         let folderSearchDepth = VolumeManager.shared.isExternalVolume(url) ? globalVar.folderSearchDepth_External : globalVar.folderSearchDepth
         if folderSearchDepth > 0 {
