@@ -11,6 +11,9 @@ class SpineViewerController: NSViewController {
     private let folderURL: URL
     private var spineView: SpineUIView?
     private(set) var spineController: SpineController?
+    private var controlsBar: SpineControlsBar?
+    private var updateTimer: Timer?
+    private var isLooping = true
 
     private(set) var availableAnimations: [String] = []
     private(set) var availableSkins: [String] = []
@@ -57,6 +60,7 @@ class SpineViewerController: NSViewController {
                         trackIndex: 0, animationName: first, loop: true
                     )
                 }
+                self.setupControls(selectedAnimation: self.availableAnimations.first)
             }
         })
 
@@ -83,10 +87,66 @@ class SpineViewerController: NSViewController {
                     self.spineView = sv
                 }
             } catch {
-                await MainActor.run {
-                    self.showError("Failed to load Spine model:\n\(error)\n\nFile: \(skelURL.lastPathComponent)\nAtlas: \(atlasURL.lastPathComponent)")
+                await MainActor.run { [weak self] in
+                    self?.showError("Failed to load Spine model:\n\(error)\n\nFile: \(skelURL.lastPathComponent)\nAtlas: \(atlasURL.lastPathComponent)")
                 }
             }
+        }
+    }
+
+    private func setupControls(selectedAnimation: String?) {
+        let bar = SpineControlsBar()
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bar)
+        NSLayoutConstraint.activate([
+            bar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        bar.setAnimations(availableAnimations, selected: selectedAnimation)
+        bar.setSkins(availableSkins)
+
+        bar.onPlayPause = { [weak self] in
+            guard let ctrl = self?.spineController else { return }
+            if ctrl.isPlaying { ctrl.pause() } else { ctrl.resume() }
+            self?.controlsBar?.updatePlayState(ctrl.isPlaying)
+        }
+        bar.onSelectAnimation = { [weak self] name in
+            guard let self else { return }
+            self.spineController?.animationState.setAnimationByName(
+                trackIndex: 0, animationName: name, loop: self.isLooping
+            )
+        }
+        bar.onSelectSkin = { [weak self] name in
+            self?.spineController?.skeleton.setSkinByName(skinName: name)
+            self?.spineController?.skeleton.setToSetupPose()
+        }
+        bar.onChangeSpeed = { [weak self] speed in
+            self?.spineController?.animationState.timeScale = speed
+        }
+        bar.onToggleLoop = { [weak self] loop in
+            self?.isLooping = loop
+            if let entry = self?.spineController?.animationState.getCurrent(trackIndex: 0) {
+                entry.loop = loop
+            }
+        }
+        bar.onChangeBgColor = { [weak self] color in
+            guard let rgb = color.usingColorSpace(.sRGB) else { return }
+            self?.spineView?.clearColor = MTLClearColor(
+                red: Double(rgb.redComponent), green: Double(rgb.greenComponent),
+                blue: Double(rgb.blueComponent), alpha: 1.0
+            )
+            self?.view.layer?.backgroundColor = color.cgColor
+        }
+
+        self.controlsBar = bar
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0/15, repeats: true) { [weak self] _ in
+            guard let self, let entry = self.spineController?.animationState.getCurrent(trackIndex: 0)
+            else { return }
+            let duration = entry.animation.duration
+            let current = (entry.isComplete && !entry.loop) ? duration
+                : (duration > 0 ? entry.trackTime.truncatingRemainder(dividingBy: duration) : 0)
+            self.controlsBar?.updateTime(current: current, duration: duration)
         }
     }
 
@@ -106,9 +166,13 @@ class SpineViewerController: NSViewController {
     }
 
     func cleanup() {
+        updateTimer?.invalidate()
+        updateTimer = nil
         spineView?.isPaused = true
         spineView?.removeFromSuperview()
         spineView = nil
+        controlsBar?.removeFromSuperview()
+        controlsBar = nil
         spineController = nil
     }
 

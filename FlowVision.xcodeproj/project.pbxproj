@@ -164,6 +164,7 @@
 		EB5537852867698D393ED2DB /* SpineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F839EF892BC149AA559F5A57 /* SpineView.swift */; };
 		FED03C84E7AC6F2BC1B4F08E /* SpineDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A6B60FD4AD01D9FE6BC7C1 /* SpineDetector.swift */; };
 		6A2E274468CDB0A987507E3E /* SpineViewerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E289CD6841003BB2006B1F4B /* SpineViewerController.swift */; };
+		BA86B52F6EF045B0511BCFF9 /* SpineControlsBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 370AF9EC9EF46965F98352A1 /* SpineControlsBar.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -459,6 +460,7 @@
 		F839EF892BC149AA559F5A57 /* SpineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpineView.swift; sourceTree = "<group>"; };
 		56A6B60FD4AD01D9FE6BC7C1 /* SpineDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpineDetector.swift; sourceTree = "<group>"; };
 		E289CD6841003BB2006B1F4B /* SpineViewerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpineViewerController.swift; sourceTree = "<group>"; };
+		370AF9EC9EF46965F98352A1 /* SpineControlsBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpineControlsBar.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -516,6 +518,7 @@
 				F73865D42C37B9B800837FE4 /* Layout.swift */,
 				F7AA00002F9E000000AA0001 /* VideoPlayerControlsView.swift */,
 				E289CD6841003BB2006B1F4B /* SpineViewerController.swift */,
+				370AF9EC9EF46965F98352A1 /* SpineControlsBar.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1130,6 +1133,7 @@
 				EB5537852867698D393ED2DB /* SpineView.swift in Sources */,
 				FED03C84E7AC6F2BC1B4F08E /* SpineDetector.swift in Sources */,
 				6A2E274468CDB0A987507E3E /* SpineViewerController.swift in Sources */,
+				BA86B52F6EF045B0511BCFF9 /* SpineControlsBar.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
