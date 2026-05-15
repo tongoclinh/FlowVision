@@ -54,7 +54,7 @@ extension ViewController {
         // Stop auto-play
         stopAutoPlay()
 
-        dismissSpineViewer()
+        dismissModelViewer()
         
         // 隐藏首次使用提示
         // Hide first-time use hint
@@ -237,10 +237,10 @@ extension ViewController {
                 return
             }
             
-            if item.file.type != .spine && url.hasDirectoryPath {
+            if item.file.type != .spine && item.file.type != .cubism && url.hasDirectoryPath {
                 switchDirByDirection(direction: .zero, dest: item.file.path, stackDeep: 0)
             }
-            else if item.file.type != .spine
+            else if item.file.type != .spine && item.file.type != .cubism
                 && !globalVar.HandledImageAndRawExtensions.contains(url.pathExtension.lowercased())
                 && !(globalVar.useInternalPlayer && globalVar.HandledNativeSupportedVideoExtensions.contains(item.file.ext)) {
                 NSWorkspace.shared.open(url)
@@ -325,7 +325,7 @@ extension ViewController {
             while nextLargeImagePos >= 0 {
                 nextLargeImagePos-=1
                 if let file = fileDB.db[SortKeyDir(curFolder)]!.files.elementSafe(atOffset: nextLargeImagePos)?.1,
-                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine {
+                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine || file.type == .cubism {
                     ifFoundNextImage=true
                     break
                 }
@@ -336,7 +336,7 @@ extension ViewController {
             while nextLargeImagePos < totalCount-1 {
                 nextLargeImagePos+=1
                 if let file = fileDB.db[SortKeyDir(curFolder)]!.files.elementSafe(atOffset: nextLargeImagePos)?.1,
-                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine {
+                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine || file.type == .cubism {
                     ifFoundNextImage=true
                     break
                 }
@@ -348,7 +348,7 @@ extension ViewController {
             while nextLargeImagePos < totalCount-1 {
                 nextLargeImagePos+=1
                 if let file = fileDB.db[SortKeyDir(curFolder)]!.files.elementSafe(atOffset: nextLargeImagePos)?.1,
-                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine {
+                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine || file.type == .cubism {
                     ifFoundNextImage=true
                     break
                 }
@@ -360,7 +360,7 @@ extension ViewController {
             while nextLargeImagePos >= 0 {
                 nextLargeImagePos-=1
                 if let file = fileDB.db[SortKeyDir(curFolder)]!.files.elementSafe(atOffset: nextLargeImagePos)?.1,
-                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine {
+                   file.type == .image || (file.type == .video && globalVar.useInternalPlayer) || file.type == .spine || file.type == .cubism {
                     ifFoundNextImage=true
                     break
                 }
@@ -933,23 +933,25 @@ extension ViewController {
             // Cancel previous large image load task
             largeImageLoadTask?.cancel()
 
-            if file.type == .spine {
-                dismissSpineViewer()
+            if file.type == .spine || file.type == .cubism {
+                dismissModelViewer()
                 largeImageView.stopVideo()
                 largeImageView.imageView.isHidden = true
 
                 if let folderURL = URL(string: file.path) {
-                    let viewer = SpineViewerController(folderURL: folderURL)
+                    let viewer: ModelViewerController = file.type == .cubism
+                        ? CubismViewerController(folderURL: folderURL)
+                        : SpineViewerController(folderURL: folderURL)
                     addChild(viewer)
                     viewer.view.frame = largeImageView.bounds
                     viewer.view.autoresizingMask = [.width, .height]
                     largeImageView.addSubview(viewer.view)
-                    currentSpineViewer = viewer
+                    currentModelViewer = viewer
                 }
                 return
             }
 
-            dismissSpineViewer()
+            dismissModelViewer()
 
             // 判断是否是视频
             // Check if is video
@@ -1052,12 +1054,12 @@ extension ViewController {
         }
     }
 
-    func dismissSpineViewer() {
-        guard currentSpineViewer != nil else { return }
-        currentSpineViewer?.cleanup()
-        currentSpineViewer?.view.removeFromSuperview()
-        currentSpineViewer?.removeFromParent()
-        currentSpineViewer = nil
+    func dismissModelViewer() {
+        guard currentModelViewer != nil else { return }
+        currentModelViewer?.cleanup()
+        currentModelViewer?.view.removeFromSuperview()
+        currentModelViewer?.removeFromParent()
+        currentModelViewer = nil
         largeImageView.imageView.isHidden = false
     }
 }

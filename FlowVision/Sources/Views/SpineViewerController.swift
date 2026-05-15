@@ -6,51 +6,19 @@
 import AppKit
 import MetalKit
 
-class SpineViewerController: NSViewController {
+class SpineViewerController: ModelViewerController {
 
-    private let folderURL: URL
     private var spineView: SpineUIView?
     private(set) var spineController: SpineController?
-    private var controlsBar: SpineControlsBar?
-    private var interactionView: SpineInteractionView?
     private var updateTimer: Timer?
     private var isLooping = true
 
     private(set) var availableAnimations: [String] = []
     private(set) var availableSkins: [String] = []
 
-    init(folderURL: URL) {
-        self.folderURL = folderURL
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    required init?(coder: NSCoder) { fatalError() }
-
-    override func loadView() {
-        view = NSView()
-        view.wantsLayer = true
-        view.layer?.backgroundColor = NSColor.black.cgColor
-
-        let iv = SpineInteractionView()
-        iv.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(iv)
-        NSLayoutConstraint.activate([
-            iv.topAnchor.constraint(equalTo: view.topAnchor),
-            iv.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            iv.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            iv.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-        ])
-        interactionView = iv
-    }
-
     override func viewDidLoad() {
         super.viewDidLoad()
         loadSpineModel()
-    }
-
-    override func viewDidAppear() {
-        super.viewDidAppear()
-        view.window?.makeFirstResponder(interactionView)
     }
 
     private func loadSpineModel() {
@@ -77,7 +45,7 @@ class SpineViewerController: NSViewController {
                         trackIndex: 0, animationName: first, loop: true
                     )
                 }
-                self.setupControls(selectedAnimation: self.availableAnimations.first)
+                self.setupSpineControls(selectedAnimation: self.availableAnimations.first)
             }
         })
 
@@ -102,8 +70,8 @@ class SpineViewerController: NSViewController {
                     sv.frame = container.bounds
                     sv.autoresizingMask = [.width, .height]
                     container.addSubview(sv)
-                    self.interactionView?.setTarget(sv)
                     self.spineView = sv
+                    self.modelViewer = sv
                 }
             } catch {
                 await MainActor.run { [weak self] in
@@ -113,17 +81,9 @@ class SpineViewerController: NSViewController {
         }
     }
 
-    private func setupControls(selectedAnimation: String?) {
-        let bar = SpineControlsBar()
-        bar.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(bar)
-        NSLayoutConstraint.activate([
-            bar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            bar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            bar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-        ])
+    private func setupSpineControls(selectedAnimation: String?) {
+        let bar = installControlsBar()
         bar.setAnimations(availableAnimations, selected: selectedAnimation)
-        bar.setSkins(availableSkins)
 
         bar.onPlayPause = { [weak self] in
             guard let ctrl = self?.spineController else { return }
@@ -136,10 +96,6 @@ class SpineViewerController: NSViewController {
                 trackIndex: 0, animationName: name, loop: self.isLooping
             )
         }
-        bar.onSelectSkin = { [weak self] name in
-            self?.spineController?.skeleton.setSkinByName(skinName: name)
-            self?.spineController?.skeleton.setToSetupPose()
-        }
         bar.onChangeSpeed = { [weak self] speed in
             self?.spineController?.animationState.timeScale = speed
         }
@@ -150,15 +106,12 @@ class SpineViewerController: NSViewController {
             }
         }
         bar.onChangeBgColor = { [weak self] color in
-            guard let rgb = color.usingColorSpace(.sRGB) else { return }
-            self?.spineView?.clearColor = MTLClearColor(
-                red: Double(rgb.redComponent), green: Double(rgb.greenComponent),
-                blue: Double(rgb.blueComponent), alpha: 1.0
-            )
-            self?.view.layer?.backgroundColor = color.cgColor
+            self?.applyBackgroundMode(.solid(color))
         }
 
-        self.controlsBar = bar
+        // Spine-specific: skin picker
+        let skinControls = buildSkinControls()
+        bar.additionalControlsView = skinControls
 
         interactionView?.onPrevAnimation = { [weak self] in
             self?.controlsBar?.selectAdjacentAnimation(next: false)
@@ -177,35 +130,42 @@ class SpineViewerController: NSViewController {
         }
     }
 
-    private func showError(_ message: String) {
-        let label = NSTextField(wrappingLabelWithString: message)
-        label.textColor = .white
-        label.font = .systemFont(ofSize: 13)
-        label.alignment = .center
-        label.isSelectable = true
-        label.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(label)
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            label.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -40)
-        ])
+    private func buildSkinControls() -> NSView {
+        let skinLabel = NSTextField(labelWithString: "Skin:")
+        skinLabel.font = .systemFont(ofSize: 11)
+        skinLabel.textColor = .secondaryLabelColor
+
+        let skinPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        skinPopup.controlSize = .small
+        skinPopup.font = .systemFont(ofSize: 11)
+        skinPopup.target = self
+        skinPopup.action = #selector(skinChanged(_:))
+        availableSkins.forEach { skinPopup.addItem(withTitle: $0) }
+
+        let hide = availableSkins.count <= 1
+        skinLabel.isHidden = hide
+        skinPopup.isHidden = hide
+
+        let separator = controlsBar?.makeVerticalSeparator() ?? NSView()
+        separator.isHidden = hide
+
+        let stack = NSStackView(views: [separator, skinLabel, skinPopup])
+        stack.orientation = .horizontal
+        stack.spacing = 6
+        return stack
     }
 
-    func cleanup() {
+    @objc private func skinChanged(_ sender: NSPopUpButton) {
+        guard let name = sender.titleOfSelectedItem else { return }
+        spineController?.skeleton.setSkinByName(skinName: name)
+        spineController?.skeleton.setToSetupPose()
+    }
+
+    override func cleanup() {
         updateTimer?.invalidate()
         updateTimer = nil
-        spineView?.isPaused = true
-        spineView?.removeFromSuperview()
         spineView = nil
-        controlsBar?.removeFromSuperview()
-        controlsBar = nil
-        interactionView?.removeFromSuperview()
-        interactionView = nil
         spineController = nil
-    }
-
-    deinit {
-        cleanup()
+        super.cleanup()
     }
 }

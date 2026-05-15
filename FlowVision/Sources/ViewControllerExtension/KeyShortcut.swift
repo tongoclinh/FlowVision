@@ -882,7 +882,7 @@ extension ViewController {
                 return nil
             }
             
-            if currentSpineViewer != nil && ["-", "=", "+", "0", "[", "]"].contains(characters) && noModifierKey {
+            if currentModelViewer != nil && ["-", "=", "+", "0", "[", "]"].contains(characters) && noModifierKey {
                 return event
             }
 

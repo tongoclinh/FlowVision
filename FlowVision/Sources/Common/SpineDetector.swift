@@ -10,7 +10,11 @@ struct SpineModelFiles {
     let atlas: URL
 }
 
-struct SpineDetector {
+struct SpineDetector: ModelDetector {
+    static func isModelFolder(at url: URL) -> Bool {
+        isSpineFolder(url)
+    }
+
     static func isSpineFolder(_ url: URL) -> Bool {
         guard url.hasDirectoryPath else { return false }
         guard let contents = try? FileManager.default.contentsOfDirectory(

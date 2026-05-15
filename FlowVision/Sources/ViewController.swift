@@ -302,7 +302,10 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
     var endTime = DispatchTime(uptimeNanoseconds: 0)
     
     
-    var currentSpineViewer: SpineViewerController?
+    var currentModelViewer: ModelViewerController?
+    var currentSpineViewer: SpineViewerController? {
+        currentModelViewer as? SpineViewerController
+    }
 
     var initLargeImagePos = -1
     var currLargeImagePos = -1
@@ -747,8 +750,10 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
         eventMonitorScrollWheel = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
             guard let self=self else{return event}
             // if getMainViewController() != self {return event}
-            // 检查事件的窗口是否是激活窗口
             if event.window != self.view.window {
+                return event
+            }
+            if currentModelViewer != nil {
                 return event
             }
             self.handleScrollWheel(event)
@@ -2048,7 +2053,7 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
         // log("Trackpad:",event.scrollingDeltaY,event.scrollingDeltaX)
         // log("Wheel:",event.deltaY)
 
-        if currentSpineViewer != nil { return }
+        if currentModelViewer != nil { return }
 
         // 仅在大图模式下响应
         // Only respond in large view mode

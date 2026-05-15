@@ -1,29 +1,41 @@
 //
-//  SpineControlsBar.swift
+//  ModelControlsBar.swift
 //  FlowVision
 //
 
 import AppKit
 
-class SpineControlsBar: NSVisualEffectView {
+class ModelControlsBar: NSVisualEffectView {
     var onPlayPause: (() -> Void)?
     var onSelectAnimation: ((String) -> Void)?
-    var onSelectSkin: ((String) -> Void)?
     var onChangeSpeed: ((Float) -> Void)?
     var onToggleLoop: ((Bool) -> Void)?
     var onChangeBgColor: ((NSColor) -> Void)?
+    var onChangeBgMode: ((BackgroundMode) -> Void)?
+
+    var additionalControlsView: NSView? {
+        didSet {
+            oldValue?.removeFromSuperview()
+            if let v = additionalControlsView {
+                v.translatesAutoresizingMaskIntoConstraints = false
+                controlsStack.insertArrangedSubview(v, at: additionalControlsInsertIndex)
+            }
+        }
+    }
 
     private let animScroll = NSScrollView()
     private let animStack = NSStackView()
     private let playBtn = NSButton()
     private let loopBtn = NSButton()
     private let speedPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-    private let skinPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-    private let skinLabel = NSTextField(labelWithString: "Skin:")
     private let timeLabel = NSTextField(labelWithString: "")
+    private let zoomLabel = NSTextField(labelWithString: "100%")
     private let bgColorWell = NSColorWell()
+    private let bgModeSegment = NSSegmentedControl()
     private var animButtons: [NSButton] = []
     private var isLooping = true
+    private var controlsStack: NSStackView!
+    private let additionalControlsInsertIndex = 3
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -53,13 +65,25 @@ class SpineControlsBar: NSVisualEffectView {
         speedPopup.selectItem(withTitle: "1×")
         configPopup(speedPopup, action: #selector(speedChanged))
 
-        skinLabel.font = .systemFont(ofSize: 11)
-        skinLabel.textColor = .secondaryLabelColor
-        configPopup(skinPopup, action: #selector(skinChanged))
-
         timeLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         timeLabel.textColor = .secondaryLabelColor
         timeLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        zoomLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        zoomLabel.textColor = .secondaryLabelColor
+        zoomLabel.setContentHuggingPriority(.required, for: .horizontal)
+        zoomLabel.alignment = .right
+
+        bgModeSegment.segmentCount = 3
+        bgModeSegment.setLabel("Solid", forSegment: 0)
+        bgModeSegment.setLabel("◻ Dark", forSegment: 1)
+        bgModeSegment.setLabel("◻ Light", forSegment: 2)
+        bgModeSegment.selectedSegment = 0
+        bgModeSegment.controlSize = .small
+        bgModeSegment.font = .systemFont(ofSize: 10)
+        bgModeSegment.target = self
+        bgModeSegment.action = #selector(bgModeChanged)
+        bgModeSegment.setContentHuggingPriority(.required, for: .horizontal)
 
         bgColorWell.color = .black
         bgColorWell.target = self
@@ -74,20 +98,19 @@ class SpineControlsBar: NSVisualEffectView {
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        let controls = NSStackView(views: [
+        controlsStack = NSStackView(views: [
             playBtn, loopBtn, speedPopup,
-            makeVerticalSeparator(), skinLabel, skinPopup,
-            spacer, timeLabel, bgColorWell
+            spacer, timeLabel, zoomLabel, bgModeSegment, bgColorWell
         ])
-        controls.orientation = .horizontal
-        controls.spacing = 6
-        controls.alignment = .centerY
-        controls.edgeInsets = NSEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)
-        controls.translatesAutoresizingMaskIntoConstraints = false
+        controlsStack.orientation = .horizontal
+        controlsStack.spacing = 6
+        controlsStack.alignment = .centerY
+        controlsStack.edgeInsets = NSEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)
+        controlsStack.translatesAutoresizingMaskIntoConstraints = false
 
         addSubview(animScroll)
         addSubview(sep)
-        addSubview(controls)
+        addSubview(controlsStack)
 
         NSLayoutConstraint.activate([
             animScroll.topAnchor.constraint(equalTo: topAnchor, constant: 6),
@@ -97,10 +120,10 @@ class SpineControlsBar: NSVisualEffectView {
             sep.topAnchor.constraint(equalTo: animScroll.bottomAnchor, constant: 4),
             sep.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             sep.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            controls.topAnchor.constraint(equalTo: sep.bottomAnchor, constant: 4),
-            controls.leadingAnchor.constraint(equalTo: leadingAnchor),
-            controls.trailingAnchor.constraint(equalTo: trailingAnchor),
-            controls.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
+            controlsStack.topAnchor.constraint(equalTo: sep.bottomAnchor, constant: 4),
+            controlsStack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            controlsStack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            controlsStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
         ])
     }
 
@@ -119,7 +142,7 @@ class SpineControlsBar: NSVisualEffectView {
         popup.action = action
     }
 
-    private func makeVerticalSeparator() -> NSView {
+    func makeVerticalSeparator() -> NSView {
         let v = DynamicSeparatorView()
         v.translatesAutoresizingMaskIntoConstraints = false
         v.widthAnchor.constraint(equalToConstant: 1).isActive = true
@@ -150,14 +173,6 @@ class SpineControlsBar: NSVisualEffectView {
             height: scrollHeight)
     }
 
-    func setSkins(_ names: [String]) {
-        skinPopup.removeAllItems()
-        names.forEach { skinPopup.addItem(withTitle: $0) }
-        let hide = names.count <= 1
-        skinPopup.isHidden = hide
-        skinLabel.isHidden = hide
-    }
-
     func updatePlayState(_ playing: Bool) {
         playBtn.image = NSImage(
             systemSymbolName: playing ? "pause.fill" : "play.fill",
@@ -167,6 +182,27 @@ class SpineControlsBar: NSVisualEffectView {
 
     func updateTime(current: Float, duration: Float) {
         timeLabel.stringValue = String(format: "%.1f / %.1fs", current, duration)
+    }
+
+    func applyBgMode(_ mode: BackgroundMode) {
+        switch mode {
+        case .solid(let color):
+            bgModeSegment.selectedSegment = 0
+            bgColorWell.isHidden = false
+            bgColorWell.color = color
+        case .checker(let variant):
+            bgModeSegment.selectedSegment = variant == .dark ? 1 : 2
+            bgColorWell.isHidden = true
+        }
+    }
+
+    func updateZoom(_ scale: CGFloat) {
+        let pct = scale * 100
+        if pct < 10 {
+            zoomLabel.stringValue = String(format: "%.1f%%", pct)
+        } else {
+            zoomLabel.stringValue = String(format: "%.0f%%", pct)
+        }
     }
 
     // MARK: - Actions
@@ -193,21 +229,29 @@ class SpineControlsBar: NSVisualEffectView {
         selectAnimation(animButtons[newIdx])
     }
 
-    @objc private func skinChanged() {
-        guard let name = skinPopup.titleOfSelectedItem else { return }
-        onSelectSkin?(name)
-    }
-
     @objc private func speedChanged() {
         let title = speedPopup.titleOfSelectedItem ?? "1×"
         let value = Float(title.replacingOccurrences(of: "×", with: "")) ?? 1.0
         onChangeSpeed?(value)
     }
 
-    @objc private func bgColorChanged() { onChangeBgColor?(bgColorWell.color) }
+    @objc private func bgColorChanged() {
+        onChangeBgColor?(bgColorWell.color)
+        onChangeBgMode?(.solid(bgColorWell.color))
+    }
+
+    @objc private func bgModeChanged() {
+        let seg = bgModeSegment.selectedSegment
+        bgColorWell.isHidden = seg != 0
+        switch seg {
+        case 1: onChangeBgMode?(.checker(.dark))
+        case 2: onChangeBgMode?(.checker(.light))
+        default: onChangeBgMode?(.solid(bgColorWell.color))
+        }
+    }
 }
 
-private class DynamicSeparatorView: NSView {
+class DynamicSeparatorView: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true

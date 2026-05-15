@@ -1,20 +1,21 @@
 //
-//  SpineInteractionView.swift
+//  ModelInteractionView.swift
 //  FlowVision
 //
 
 import AppKit
 import MetalKit
 
-class SpineInteractionView: NSView {
+class ModelInteractionView: NSView {
 
     var onPrevAnimation: (() -> Void)?
     var onNextAnimation: (() -> Void)?
+    var onScaleChanged: ((CGFloat) -> Void)?
 
-    private var currentScale: CGFloat = 1.0
+    private(set) var currentScale: CGFloat = 1.0
     private var skeletonCenter: CGPoint = .zero
-    private weak var targetView: MTKView?
-    private var originalBounds: CGRect = .zero
+    private weak var targetViewer: (any ModelViewer)?
+    private var cachedOriginalBounds: CGRect = .zero
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -22,8 +23,8 @@ class SpineInteractionView: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
 
-    func setTarget(_ view: MTKView) {
-        targetView = view
+    func setTarget(_ viewer: any ModelViewer) {
+        targetViewer = viewer
     }
 
     override var acceptsFirstResponder: Bool { true }
@@ -46,10 +47,11 @@ class SpineInteractionView: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         guard ensureOriginalBounds() else { return }
-        let visibleW = originalBounds.width / currentScale
-        let visibleH = originalBounds.height / currentScale
+        let visibleW = cachedOriginalBounds.width / currentScale
+        let visibleH = cachedOriginalBounds.height / currentScale
+        let ySign: CGFloat = (targetViewer?.isYAxisFlipped ?? true) ? -1 : 1
         skeletonCenter.x -= event.deltaX / bounds.width * visibleW
-        skeletonCenter.y -= event.deltaY / bounds.height * visibleH
+        skeletonCenter.y += ySign * event.deltaY / bounds.height * visibleH
         updateProjection()
     }
 
@@ -75,11 +77,14 @@ class SpineInteractionView: NSView {
 
     @discardableResult
     private func ensureOriginalBounds() -> Bool {
-        if originalBounds == .zero, let sv = targetView as? SpineUIView, sv.computedBounds != .zero {
-            originalBounds = sv.computedBounds
-            skeletonCenter = CGPoint(x: originalBounds.midX, y: originalBounds.midY)
+        if cachedOriginalBounds == .zero {
+            let bounds = targetViewer?.originalBounds() ?? .zero
+            if bounds != .zero {
+                cachedOriginalBounds = bounds
+                skeletonCenter = CGPoint(x: bounds.midX, y: bounds.midY)
+            }
         }
-        return originalBounds != .zero
+        return cachedOriginalBounds != .zero
     }
 
     private func zoom(by factor: CGFloat, around point: CGPoint) {
@@ -87,36 +92,37 @@ class SpineInteractionView: NSView {
         let newScale = min(max(currentScale * factor, 0.1), 100.0)
         let f = newScale / currentScale
 
-        let visibleW = originalBounds.width / currentScale
-        let visibleH = originalBounds.height / currentScale
+        let visibleW = cachedOriginalBounds.width / currentScale
+        let visibleH = cachedOriginalBounds.height / currentScale
         let nvx = (point.x - bounds.midX) / bounds.width
         let nvy = (point.y - bounds.midY) / bounds.height
 
+        let ySign: CGFloat = (targetViewer?.isYAxisFlipped ?? true) ? -1 : 1
         skeletonCenter.x += nvx * visibleW * (1 - 1 / f)
-        skeletonCenter.y -= nvy * visibleH * (1 - 1 / f)
+        skeletonCenter.y += ySign * nvy * visibleH * (1 - 1 / f)
 
         currentScale = newScale
         updateProjection()
+        onScaleChanged?(currentScale)
     }
 
     private func updateProjection() {
-        guard let sv = targetView as? SpineUIView else { return }
-        let visibleW = originalBounds.width / currentScale
-        let visibleH = originalBounds.height / currentScale
-        sv.computedBounds = CGRect(
+        let visibleW = cachedOriginalBounds.width / currentScale
+        let visibleH = cachedOriginalBounds.height / currentScale
+        targetViewer?.setProjection(visibleBounds: CGRect(
             x: skeletonCenter.x - visibleW / 2,
             y: skeletonCenter.y - visibleH / 2,
             width: visibleW,
             height: visibleH
-        )
-        sv.delegate?.mtkView(sv, drawableSizeWillChange: sv.drawableSize)
+        ))
     }
 
     func resetTransform() {
-        guard originalBounds != .zero else { return }
+        guard cachedOriginalBounds != .zero else { return }
         currentScale = 1.0
-        skeletonCenter = CGPoint(x: originalBounds.midX, y: originalBounds.midY)
-        targetView?.layer?.setAffineTransform(.identity)
+        skeletonCenter = CGPoint(x: cachedOriginalBounds.midX, y: cachedOriginalBounds.midY)
+        targetViewer?.viewerView.layer?.setAffineTransform(.identity)
         updateProjection()
+        onScaleChanged?(currentScale)
     }
 }
