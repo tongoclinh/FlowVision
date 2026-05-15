@@ -16,9 +16,11 @@ class ModelViewerController: NSViewController {
             }
         }
     }
+    private(set) var isModelReady = false
     private(set) var interactionView: ModelInteractionView?
     private(set) var controlsBar: ModelControlsBar?
     private(set) var checkerView: CheckerPatternView?
+    private var spinner: NSProgressIndicator?
 
     init(folderURL: URL) {
         self.folderURL = folderURL
@@ -52,7 +54,20 @@ class ModelViewerController: NSViewController {
             iv.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             iv.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
+        iv.isHidden = true
         interactionView = iv
+
+        let sp = NSProgressIndicator()
+        sp.style = .spinning
+        sp.controlSize = .regular
+        sp.translatesAutoresizingMaskIntoConstraints = false
+        sp.startAnimation(nil)
+        view.addSubview(sp)
+        NSLayoutConstraint.activate([
+            sp.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            sp.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+        ])
+        spinner = sp
     }
 
     override func viewDidAppear() {
@@ -101,7 +116,16 @@ class ModelViewerController: NSViewController {
         modelViewer?.applyBackground(mode)
     }
 
+    func onModelReady() {
+        log("[NAV-DBG] onModelReady: spinner hidden, interactionView revealed")
+        isModelReady = true
+        spinner?.stopAnimation(nil)
+        spinner?.isHidden = true
+        interactionView?.isHidden = false
+    }
+
     func showError(_ message: String) {
+        onModelReady()
         let label = NSTextField(wrappingLabelWithString: message)
         label.textColor = .white
         label.font = .systemFont(ofSize: 13)
@@ -171,7 +195,12 @@ class ModelViewerController: NSViewController {
     func cleanup() {
         guard !didCleanup else { return }
         didCleanup = true
-        saveCurrentState()
+        let t0 = CFAbsoluteTimeGetCurrent()
+        if isModelReady { saveCurrentState() }
+        let t1 = CFAbsoluteTimeGetCurrent()
+        spinner?.stopAnimation(nil)
+        spinner?.removeFromSuperview()
+        spinner = nil
         modelViewer?.viewerView.isPaused = true
         modelViewer?.viewerView.removeFromSuperview()
         modelViewer = nil
@@ -179,6 +208,8 @@ class ModelViewerController: NSViewController {
         controlsBar = nil
         interactionView?.removeFromSuperview()
         interactionView = nil
+        let t2 = CFAbsoluteTimeGetCurrent()
+        log("[NAV-DBG] ModelViewerController.cleanup: save=\(String(format:"%.1f",(t1-t0)*1000)) views=\(String(format:"%.1f",(t2-t1)*1000)) total=\(String(format:"%.1f",(t2-t0)*1000))ms")
     }
 
     deinit {

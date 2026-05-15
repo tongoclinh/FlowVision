@@ -24,6 +24,7 @@ class SpineViewerController: ModelViewerController {
     private var updateTimer: Timer?
     private var isLooping = true
     private var currentPMAMode: SpinePMAMode = .auto
+    private var loadTask: Task<Void, Never>?
 
     private(set) var availableAnimations: [String] = []
     private(set) var availableSkins: [String] = []
@@ -65,13 +66,17 @@ class SpineViewerController: ModelViewerController {
 
         self.spineController = controller
 
-        Task.detached(priority: .high) { [weak self] in
-            guard let self else { return }
+        log("[NAV-DBG] Spine: launching background load")
+        loadTask = Task.detached(priority: .high) {
             do {
                 let source = SpineViewSource.file(atlasFile: atlasURL, skeletonFile: skelURL)
+                log("[NAV-DBG] Spine: loadDrawable BEGIN isMainThread=\(Thread.isMainThread)")
                 let drawable = try await source.loadDrawable()
-                await MainActor.run {
-                    guard self.view.window != nil else { return }
+                log("[NAV-DBG] Spine: loadDrawable END cancelled=\(Task.isCancelled)")
+                guard !Task.isCancelled else { return }
+                await MainActor.run { [weak self] in
+                    guard let self, self.view.window != nil, !Task.isCancelled else { return }
+                    log("[NAV-DBG] Spine: MainActor creating SpineUIView")
                     let container = self.interactionView ?? self.view
                     let sv = SpineUIView(
                         from: .drawable(drawable),
@@ -81,6 +86,7 @@ class SpineViewerController: ModelViewerController {
                         boundsProvider: SetupPoseBounds(),
                         backgroundColor: .black
                     )
+                    sv.isHidden = true
                     sv.frame = container.bounds
                     sv.autoresizingMask = [.width, .height]
                     container.addSubview(sv)
@@ -88,6 +94,7 @@ class SpineViewerController: ModelViewerController {
                     self.modelViewer = sv
                 }
             } catch {
+                guard !Task.isCancelled else { return }
                 await MainActor.run { [weak self] in
                     self?.showError("Failed to load Spine model:\n\(error)\n\nFile: \(skelURL.lastPathComponent)\nAtlas: \(atlasURL.lastPathComponent)")
                 }
@@ -96,6 +103,7 @@ class SpineViewerController: ModelViewerController {
     }
 
     private func setupSpineControls(selectedAnimation: String?) {
+        guard view.window != nil else { return }
         let bar = installControlsBar()
         bar.setAnimations(availableAnimations, selected: selectedAnimation)
 
@@ -150,6 +158,9 @@ class SpineViewerController: ModelViewerController {
         updateTimer = timer
 
         loadSavedState()
+        spineView?.isHidden = false
+        log("[NAV-DBG] Spine: setupSpineControls done → onModelReady")
+        onModelReady()
     }
 
     private func buildSkinControls() -> NSView {
@@ -254,6 +265,8 @@ class SpineViewerController: ModelViewerController {
     }
 
     override func cleanup() {
+        loadTask?.cancel()
+        loadTask = nil
         updateTimer?.invalidate()
         updateTimer = nil
         spineView = nil

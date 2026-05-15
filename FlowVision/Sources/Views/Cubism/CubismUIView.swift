@@ -9,9 +9,9 @@ import MetalKit
 final class CubismUIView: MTKView, ModelViewer {
 
     let modelHandle = CubismModelHandle()
-    private var commandQueue: MTLCommandQueue?
-    private var folderURL: URL?
-    private var modelJsonName: String?
+    private(set) var commandQueue: MTLCommandQueue?
+    var folderURL: URL?
+    var modelJsonName: String?
 
     var animationPaused: Bool = false {
         didSet { super.isPaused = animationPaused }

@@ -22,6 +22,7 @@ class SpineCompositeController: ModelViewerController {
     private var updateTimer: Timer?
     private var isLooping = true
     private var loadedCount = 0
+    private var loadTasks: [Task<Void, Never>] = []
 
     init(folderURL: URL, config: CompositeConfig) {
         self.config = config
@@ -91,14 +92,18 @@ class SpineCompositeController: ModelViewerController {
             }
         })
 
-        Task.detached(priority: .high) { [weak self] in
-            guard let self else { return }
+        let atlasURL = layer.files.atlas
+        let skelURL = layer.files.skeleton
+        let basename = layer.basename
+
+        let task = Task.detached(priority: .high) {
             do {
                 let source = SpineViewSource.file(
-                    atlasFile: layer.files.atlas, skeletonFile: layer.files.skeleton)
+                    atlasFile: atlasURL, skeletonFile: skelURL)
                 let drawable = try await source.loadDrawable()
-                await MainActor.run {
-                    guard self.view.window != nil else { return }
+                guard !Task.isCancelled else { return }
+                await MainActor.run { [weak self] in
+                    guard let self, self.view.window != nil, !Task.isCancelled else { return }
                     let container = self.interactionView ?? self.view
                     let sv = SpineUIView(
                         from: .drawable(drawable),
@@ -108,6 +113,7 @@ class SpineCompositeController: ModelViewerController {
                         boundsProvider: SetupPoseBounds(),
                         backgroundColor: bgColor
                     )
+                    sv.isHidden = true
                     sv.frame = container.bounds
                     sv.autoresizingMask = [.width, .height]
                     if !isBottom {
@@ -117,8 +123,9 @@ class SpineCompositeController: ModelViewerController {
                     self.layers[index].spineView = sv
                 }
             } catch {
+                guard !Task.isCancelled else { return }
                 await MainActor.run { [weak self] in
-                    log("Failed to load composite layer \(layer.basename): \(error)")
+                    log("Failed to load composite layer \(basename): \(error)")
                     self?.loadedCount += 1
                     if self?.loadedCount == self?.layers.count {
                         self?.onAllLayersLoaded()
@@ -126,9 +133,11 @@ class SpineCompositeController: ModelViewerController {
                 }
             }
         }
+        loadTasks.append(task)
     }
 
     private func onAllLayersLoaded() {
+        guard view.window != nil else { return }
         reorderSubviews()
 
         guard let mainView = layers[mainLayerIndex].spineView else {
@@ -231,6 +240,8 @@ class SpineCompositeController: ModelViewerController {
         updateTimer = timer
 
         loadSavedState()
+        for layer in layers { layer.spineView?.isHidden = false }
+        onModelReady()
     }
 
     // MARK: - Background
@@ -255,6 +266,8 @@ class SpineCompositeController: ModelViewerController {
     // MARK: - Cleanup
 
     override func cleanup() {
+        loadTasks.forEach { $0.cancel() }
+        loadTasks.removeAll()
         updateTimer?.invalidate()
         updateTimer = nil
         forEachController { $0.pause() }

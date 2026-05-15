@@ -8,6 +8,8 @@ import Cocoa
 import AVFoundation
 import DiskArbitration
 
+private func ms(_ s: CFAbsoluteTime) -> String { String(format: "%.1f", s * 1000) }
+
 extension ViewController {
     
     func switchToActualSizeForLargeImage(){
@@ -743,17 +745,51 @@ extension ViewController {
         largeImageView.refreshRatingStars()
 
         if justChangeLargeImageViewFile {return}
-  
+
         let url=URL(string:file.path)!
-        
+
+        if file.type == .spine || file.type == .cubism {
+            let t0 = CFAbsoluteTimeGetCurrent()
+            log("[NAV-DBG] changeLargeImage: START model load (\(file.type)) pos=\(pos)")
+            largeImageLoadTask?.cancel()
+            let t1 = CFAbsoluteTimeGetCurrent()
+            dismissModelViewer()
+            let t2 = CFAbsoluteTimeGetCurrent()
+            largeImageView.stopVideo()
+            largeImageView.imageView.isHidden = true
+            setWindowTitleOfLargeImage(file: file)
+
+            if let folderURL = URL(string: file.path) {
+                let viewer: ModelViewerController
+                if file.type == .cubism {
+                    viewer = CubismViewerController(folderURL: folderURL)
+                } else if let config = ModelViewerStateManager.loadCompositeConfig(for: folderURL) {
+                    viewer = SpineCompositeController(folderURL: folderURL, config: config)
+                } else {
+                    viewer = SpineViewerController(folderURL: folderURL)
+                }
+                let t3 = CFAbsoluteTimeGetCurrent()
+                addChild(viewer)
+                let t4 = CFAbsoluteTimeGetCurrent()
+                viewer.view.frame = largeImageView.bounds
+                let t5 = CFAbsoluteTimeGetCurrent()
+                viewer.view.autoresizingMask = [.width, .height]
+                largeImageView.addSubview(viewer.view)
+                let t6 = CFAbsoluteTimeGetCurrent()
+                currentModelViewer = viewer
+                log("[NAV-DBG] changeLargeImage: DONE cancel=\(ms(t1-t0)) dismiss=\(ms(t2-t1)) init=\(ms(t3-t2)) addChild=\(ms(t4-t3)) loadView=\(ms(t5-t4)) addSubview=\(ms(t6-t5)) total=\(ms(t6-t0))ms")
+            }
+            return
+        }
+
         if forceRefresh {
             getFileInfo(file: file)
             file.imageInfo = getImageInfo(url: url, needMetadata: true)
             file.originalSize=file.imageInfo?.size
         }
-        
+
         let scale = NSScreen.main?.backingScaleFactor ?? 1
-        
+
         var maxBounds=largeImageView.imageView.bounds
         if resetSize{maxBounds=largeImageView.bounds}
         
@@ -933,29 +969,6 @@ extension ViewController {
             // Cancel previous large image load task
             largeImageLoadTask?.cancel()
 
-            if file.type == .spine || file.type == .cubism {
-                dismissModelViewer()
-                largeImageView.stopVideo()
-                largeImageView.imageView.isHidden = true
-
-                if let folderURL = URL(string: file.path) {
-                    let viewer: ModelViewerController
-                    if file.type == .cubism {
-                        viewer = CubismViewerController(folderURL: folderURL)
-                    } else if let config = ModelViewerStateManager.loadCompositeConfig(for: folderURL) {
-                        viewer = SpineCompositeController(folderURL: folderURL, config: config)
-                    } else {
-                        viewer = SpineViewerController(folderURL: folderURL)
-                    }
-                    addChild(viewer)
-                    viewer.view.frame = largeImageView.bounds
-                    viewer.view.autoresizingMask = [.width, .height]
-                    largeImageView.addSubview(viewer.view)
-                    currentModelViewer = viewer
-                }
-                return
-            }
-
             dismissModelViewer()
 
             // 判断是否是视频
@@ -1061,10 +1074,14 @@ extension ViewController {
 
     func dismissModelViewer() {
         guard currentModelViewer != nil else { return }
+        let t0 = CFAbsoluteTimeGetCurrent()
         currentModelViewer?.cleanup()
+        let t1 = CFAbsoluteTimeGetCurrent()
         currentModelViewer?.view.removeFromSuperview()
         currentModelViewer?.removeFromParent()
         currentModelViewer = nil
+        let t2 = CFAbsoluteTimeGetCurrent()
         largeImageView.imageView.isHidden = false
+        log("[NAV-DBG] dismissModelViewer: cleanup=\(ms(t1-t0)) remove=\(ms(t2-t1)) total=\(ms(t2-t0))ms")
     }
 }

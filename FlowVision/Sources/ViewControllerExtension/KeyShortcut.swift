@@ -705,9 +705,9 @@ extension ViewController {
                         // RTL: right arrow = backward
                         largeImageView.seekVideo(direction: isRTL ? -1 : 1)
                     } else if specialKey == .rightArrow && isRTL {
-                        previousLargeImage()
+                        let t0 = CFAbsoluteTimeGetCurrent(); previousLargeImage(); log("[NAV-DBG] arrow→prev took \(String(format:"%.1f",(CFAbsoluteTimeGetCurrent()-t0)*1000))ms")
                     } else {
-                        nextLargeImage()
+                        let t0 = CFAbsoluteTimeGetCurrent(); nextLargeImage(); log("[NAV-DBG] arrow→next took \(String(format:"%.1f",(CFAbsoluteTimeGetCurrent()-t0)*1000))ms")
                     }
                     return nil
                 }
@@ -720,9 +720,9 @@ extension ViewController {
                         // RTL: left arrow = forward
                         largeImageView.seekVideo(direction: isRTL ? 1 : -1)
                     } else if specialKey == .leftArrow && isRTL {
-                        nextLargeImage()
+                        let t0 = CFAbsoluteTimeGetCurrent(); nextLargeImage(); log("[NAV-DBG] arrow→next took \(String(format:"%.1f",(CFAbsoluteTimeGetCurrent()-t0)*1000))ms")
                     } else {
-                        previousLargeImage()
+                        let t0 = CFAbsoluteTimeGetCurrent(); previousLargeImage(); log("[NAV-DBG] arrow→prev took \(String(format:"%.1f",(CFAbsoluteTimeGetCurrent()-t0)*1000))ms")
                     }
                     return nil
                 }

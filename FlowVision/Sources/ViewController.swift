@@ -753,7 +753,7 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
             if event.window != self.view.window {
                 return event
             }
-            if currentModelViewer != nil {
+            if let viewer = currentModelViewer, viewer.isModelReady {
                 return event
             }
             self.handleScrollWheel(event)
@@ -2053,7 +2053,7 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
         // log("Trackpad:",event.scrollingDeltaY,event.scrollingDeltaX)
         // log("Wheel:",event.deltaY)
 
-        if currentModelViewer != nil { return }
+        if let viewer = currentModelViewer, viewer.isModelReady { return }
 
         // 仅在大图模式下响应
         // Only respond in large view mode
@@ -2162,12 +2162,10 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
         }
 
         if cumulativeScroll > 0 {
-            // 向上滚动
-            // Scroll up
+            log("[NAV-DBG] handleScrollWheel → previousLargeImage")
             previousLargeImage()
         } else if cumulativeScroll < 0 {
-            // 向下滚动
-            // Scroll down
+            log("[NAV-DBG] handleScrollWheel → nextLargeImage")
             nextLargeImage()
         }
         cumulativeScroll=0

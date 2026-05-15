@@ -38,6 +38,7 @@ class ModelInteractionView: NSView {
     // MARK: - Mouse
 
     override func scrollWheel(with event: NSEvent) {
+        log("[NAV-DBG] ModelInteractionView.scrollWheel captured (deltaY=\(event.deltaY))")
         let factor: CGFloat = 1.0 + event.deltaY * 0.03
         zoom(by: factor, around: convert(event.locationInWindow, from: nil))
     }
@@ -64,6 +65,7 @@ class ModelInteractionView: NSView {
     // MARK: - Keyboard
 
     override func keyDown(with event: NSEvent) {
+        log("[NAV-DBG] ModelInteractionView.keyDown: '\(event.charactersIgnoringModifiers ?? "")' isHidden=\(isHidden)")
         switch event.charactersIgnoringModifiers {
         case "+", "=": zoom(by: 1.25, around: CGPoint(x: bounds.midX, y: bounds.midY))
         case "-": zoom(by: 0.8, around: CGPoint(x: bounds.midX, y: bounds.midY))
