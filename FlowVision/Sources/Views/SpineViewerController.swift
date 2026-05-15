@@ -52,7 +52,7 @@ class SpineViewerController: ModelViewerController {
 
         let controller = SpineController(onInitialized: { [weak self] ctrl in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, self.view.window != nil, self.spineView != nil else { return }
                 self.availableAnimations = ctrl.skeletonData.animations.compactMap { $0.name }
                 self.availableSkins = ctrl.skeletonData.skins.compactMap { $0.name }
                 if let first = self.availableAnimations.first {

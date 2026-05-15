@@ -125,7 +125,9 @@ class ModelViewerController: NSViewController {
     }
 
     func showError(_ message: String) {
-        onModelReady()
+        spinner?.stopAnimation(nil)
+        spinner?.isHidden = true
+        interactionView?.isHidden = false
         let label = NSTextField(wrappingLabelWithString: message)
         label.textColor = .white
         label.font = .systemFont(ofSize: 13)
