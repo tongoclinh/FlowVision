@@ -261,6 +261,16 @@ static BOOL s_initialized = NO;
     _model->SeekMotionTo(time);
 }
 
+- (BOOL)loopingEnabled
+{
+    return _model ? _model->IsLoopingEnabled() : NO;
+}
+
+- (void)setLoopingEnabled:(BOOL)loopingEnabled
+{
+    if (_model) _model->SetLoopingEnabled(loopingEnabled);
+}
+
 // --- Update & Draw ---
 
 - (void)updateWithSpeed:(float)speedMultiplier

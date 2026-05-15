@@ -236,6 +236,7 @@
 		MV0005050505050505050505 /* ModelViewerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1005050505050505050505 /* ModelViewerController.swift */; };
 		MV0006060606060606060606 /* SpineUIViewModelViewerConformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1006060606060606060606 /* SpineUIViewModelViewerConformance.swift */; };
 		MV0007070707070707070707 /* CheckerPatternView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1007070707070707070707 /* CheckerPatternView.swift */; };
+		MV0008080808080808080808 /* ModelViewerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1008080808080808080808 /* ModelViewerState.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -691,6 +692,7 @@
 		MV1005050505050505050505 /* ModelViewerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelViewerController.swift; sourceTree = "<group>"; };
 		MV1006060606060606060606 /* SpineUIViewModelViewerConformance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpineUIViewModelViewerConformance.swift; sourceTree = "<group>"; };
 		MV1007070707070707070707 /* CheckerPatternView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckerPatternView.swift; sourceTree = "<group>"; };
+		MV1008080808080808080808 /* ModelViewerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelViewerState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1421,6 +1423,7 @@
 				MV1005050505050505050505 /* ModelViewerController.swift */,
 				MV1006060606060606060606 /* SpineUIViewModelViewerConformance.swift */,
 				MV1007070707070707070707 /* CheckerPatternView.swift */,
+				MV1008080808080808080808 /* ModelViewerState.swift */,
 			);
 			path = ModelViewer;
 			sourceTree = "<group>";
@@ -1695,6 +1698,7 @@
 				MV0005050505050505050505 /* ModelViewerController.swift in Sources */,
 				MV0006060606060606060606 /* SpineUIViewModelViewerConformance.swift in Sources */,
 				MV0007070707070707070707 /* CheckerPatternView.swift in Sources */,
+				MV0008080808080808080808 /* ModelViewerState.swift in Sources */,
 				CBd65841aa0865c50485d22f /* ACubismMotion.cpp in Sources */,
 				CB1479107535cebd2f365832 /* Allocator.mm in Sources */,
 				CBc0a09243d8e48268d5e326 /* CubismBreath.cpp in Sources */,

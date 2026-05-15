@@ -55,6 +55,8 @@ CubismModelWrapper::CubismModelWrapper()
     , _hasPendingSeek(false)
     , _motionUpdated(false)
     , _physicsEnabled(true)
+    , _loopingEnabled(false)
+    , _lastMotionNo(-1)
     , _textureLoader(NULL)
 {
     _mocConsistency = true;
@@ -394,7 +396,14 @@ void CubismModelWrapper::Update(float speedMultiplier)
     _model->LoadParameters();
     if (_motionManager->IsFinished())
     {
-        StartRandomMotion(MotionGroupIdle, PriorityIdle);
+        if (_loopingEnabled && _lastMotionNo >= 0)
+        {
+            StartMotion(_lastMotionGroup.GetRawString(), _lastMotionNo, PriorityForce);
+        }
+        else
+        {
+            StartRandomMotion(MotionGroupIdle, PriorityIdle);
+        }
     }
     _motionUpdated = _motionManager->UpdateMotion(_model, deltaTimeSeconds);
     _model->SaveParameters();
@@ -410,6 +419,9 @@ Csm::CubismMotionQueueEntryHandle CubismModelWrapper::StartMotion(const Csm::csm
     Csm::ACubismMotion::FinishedMotionCallback onFinishedMotionHandler,
     Csm::ACubismMotion::BeganMotionCallback onBeganMotionHandler)
 {
+    _lastMotionGroup = group;
+    _lastMotionNo = no;
+
     if (priority == PriorityForce)
     {
         _motionManager->SetReservePriority(priority);
@@ -598,6 +610,16 @@ void CubismModelWrapper::SeekMotionTo(Csm::csmFloat32 time)
 {
     _pendingSeekTime = time;
     _hasPendingSeek = true;
+}
+
+void CubismModelWrapper::SetLoopingEnabled(Csm::csmBool enabled)
+{
+    _loopingEnabled = enabled;
+}
+
+Csm::csmBool CubismModelWrapper::IsLoopingEnabled() const
+{
+    return _loopingEnabled;
 }
 
 void CubismModelWrapper::MotionEventFired(const Live2D::Cubism::Framework::csmString& eventValue)

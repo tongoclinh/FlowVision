@@ -202,6 +202,42 @@ class ModelControlsBar: NSVisualEffectView {
         }
     }
 
+    var currentBgMode: BackgroundMode {
+        switch bgModeSegment.selectedSegment {
+        case 1: return .checker(.dark)
+        case 2: return .checker(.light)
+        default: return .solid(bgColorWell.color)
+        }
+    }
+
+    var selectedAnimationName: String? {
+        animButtons.first(where: { $0.state == .on })?.title
+    }
+
+    var currentSpeed: Float {
+        let title = speedPopup.titleOfSelectedItem ?? "1×"
+        return Float(title.replacingOccurrences(of: "×", with: "")) ?? 1.0
+    }
+
+    var currentLoopState: Bool { isLooping }
+
+    func selectAnimationByName(_ name: String) {
+        guard let btn = animButtons.first(where: { $0.title == name }) else { return }
+        selectAnimation(btn)
+    }
+
+    func setSpeed(_ speed: Float) {
+        let label = "\(speed == Float(Int(speed)) ? String(format: "%.0f", speed) : String(format: "%g", speed))×"
+        if speedPopup.itemTitles.contains(label) {
+            speedPopup.selectItem(withTitle: label)
+        }
+    }
+
+    func setLoopState(_ loop: Bool) {
+        isLooping = loop
+        loopBtn.contentTintColor = isLooping ? .controlAccentColor : .secondaryLabelColor
+    }
+
     func applyBgMode(_ mode: BackgroundMode) {
         switch mode {
         case .solid(let color):

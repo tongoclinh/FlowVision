@@ -73,6 +73,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) float currentMotionDuration;
 - (void)seekMotionTo:(float)time;
 
+// --- Looping ---
+
+@property (nonatomic) BOOL loopingEnabled;
+
 // --- Update & Draw ---
 
 - (void)updateWithSpeed:(float)speedMultiplier;

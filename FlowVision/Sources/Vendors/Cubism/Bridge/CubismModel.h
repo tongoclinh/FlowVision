@@ -60,6 +60,9 @@ public:
     void SeekMotionTo(Csm::csmFloat32 time);
     void ApplyPendingSeek();
 
+    void SetLoopingEnabled(Csm::csmBool enabled);
+    Csm::csmBool IsLoopingEnabled() const;
+
 protected:
     void DoDraw();
 
@@ -92,6 +95,9 @@ private:
     const Csm::CubismId* _idParamEyeBallY;
     Csm::csmBool _motionUpdated;
     Csm::csmBool _physicsEnabled;
+    Csm::csmBool _loopingEnabled;
+    Csm::csmString _lastMotionGroup;
+    Csm::csmInt32 _lastMotionNo;
 
     TextureLoader* _textureLoader;
 

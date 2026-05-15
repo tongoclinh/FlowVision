@@ -6,12 +6,22 @@
 import AppKit
 import MetalKit
 
+struct CubismViewerSpecificState: Codable {
+    var selectedExpression: String?
+    var physicsEnabled: Bool?
+    var lookAtEnabled: Bool?
+}
+
 class CubismViewerController: ModelViewerController {
 
     private var cubismView: CubismUIView?
     private var isPlaying = true
+    private var isLooping = false
     private var allModels: [CubismModelFiles] = []
     private var updateTimer: Timer?
+    private var expressionPopup: NSPopUpButton?
+    private var physicsButton: NSButton?
+    private var lookAtButton: NSButton?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -75,11 +85,29 @@ class CubismViewerController: ModelViewerController {
             self?.cubismView?.playbackSpeed = speed
         }
 
+        bar.onToggleLoop = { [weak self] loop in
+            self?.isLooping = loop
+            self?.cubismView?.modelHandle.loopingEnabled = loop
+        }
+
         bar.onChangeBgColor = { [weak self] color in
             self?.applyBackgroundMode(.solid(color))
         }
         bar.onScrub = { [weak cv] time in
             cv?.modelHandle.seekMotion(to: time)
+        }
+        bar.onScrubEnd = { [weak self] in
+            guard let self, let cv = self.cubismView else { return }
+            if !self.isPlaying {
+                cv.animationPaused = true
+            }
+        }
+
+        interactionView?.onPrevAnimation = { [weak self] in
+            self?.controlsBar?.selectAdjacentAnimation(next: false)
+        }
+        interactionView?.onNextAnimation = { [weak self] in
+            self?.controlsBar?.selectAdjacentAnimation(next: true)
         }
 
         bar.additionalControlsView = buildCubismControls(cv: cv)
@@ -92,6 +120,8 @@ class CubismViewerController: ModelViewerController {
         }
         RunLoop.current.add(timer, forMode: .common)
         updateTimer = timer
+
+        loadSavedState()
     }
 
     // MARK: - Cubism-specific controls
@@ -103,27 +133,30 @@ class CubismViewerController: ModelViewerController {
 
         let expressions = cv.expressionNames
         if !expressions.isEmpty {
-            let popup = NSPopUpButton(frame: .zero, pullsDown: false)
-            popup.addItem(withTitle: "Expression")
-            popup.addItems(withTitles: expressions)
-            popup.controlSize = .small
-            popup.font = NSFont.systemFont(ofSize: 10)
-            popup.target = self
-            popup.action = #selector(expressionChanged(_:))
-            stack.addArrangedSubview(popup)
+            let exprBtn = NSPopUpButton(frame: .zero, pullsDown: false)
+            exprBtn.addItem(withTitle: "Expression")
+            exprBtn.addItems(withTitles: expressions)
+            exprBtn.controlSize = .small
+            exprBtn.font = NSFont.systemFont(ofSize: 10)
+            exprBtn.target = self
+            exprBtn.action = #selector(expressionChanged(_:))
+            stack.addArrangedSubview(exprBtn)
+            self.expressionPopup = exprBtn
         }
 
-        let physicsBtn = NSButton(checkboxWithTitle: "Physics", target: self, action: #selector(physicsToggled(_:)))
-        physicsBtn.controlSize = .small
-        physicsBtn.font = NSFont.systemFont(ofSize: 10)
-        physicsBtn.state = .on
-        stack.addArrangedSubview(physicsBtn)
+        let physBtn = NSButton(checkboxWithTitle: "Physics", target: self, action: #selector(physicsToggled(_:)))
+        physBtn.controlSize = .small
+        physBtn.font = NSFont.systemFont(ofSize: 10)
+        physBtn.state = .on
+        stack.addArrangedSubview(physBtn)
+        self.physicsButton = physBtn
 
-        let lookAtBtn = NSButton(checkboxWithTitle: "Look-at", target: self, action: #selector(lookAtToggled(_:)))
-        lookAtBtn.controlSize = .small
-        lookAtBtn.font = NSFont.systemFont(ofSize: 10)
-        lookAtBtn.state = .on
-        stack.addArrangedSubview(lookAtBtn)
+        let lookBtn = NSButton(checkboxWithTitle: "Look-at", target: self, action: #selector(lookAtToggled(_:)))
+        lookBtn.controlSize = .small
+        lookBtn.font = NSFont.systemFont(ofSize: 10)
+        lookBtn.state = .on
+        stack.addArrangedSubview(lookBtn)
+        self.lookAtButton = lookBtn
 
         if allModels.count > 1 {
             let modelPopup = NSPopUpButton(frame: .zero, pullsDown: false)
@@ -202,6 +235,36 @@ class CubismViewerController: ModelViewerController {
         }
 
         super.mouseDown(with: event)
+    }
+
+    // MARK: - State Persistence
+
+    override func collectViewerState() -> Encodable? {
+        CubismViewerSpecificState(
+            selectedExpression: expressionPopup.flatMap { $0.indexOfSelectedItem > 0 ? $0.titleOfSelectedItem : nil },
+            physicsEnabled: physicsButton?.state == .on,
+            lookAtEnabled: lookAtButton?.state == .on
+        )
+    }
+
+    override func applyViewerState(from data: Data) {
+        guard let vs = try? JSONDecoder().decode(CubismViewerSpecificState.self, from: data)
+        else { return }
+
+        if let exprName = vs.selectedExpression, let cv = cubismView {
+            expressionPopup?.selectItem(withTitle: exprName)
+            cv.setExpression(exprName)
+        }
+
+        if let physics = vs.physicsEnabled {
+            physicsButton?.state = physics ? .on : .off
+            cubismView?.isPhysicsEnabled = physics
+        }
+
+        if let lookAt = vs.lookAtEnabled {
+            lookAtButton?.state = lookAt ? .on : .off
+            cubismView?.isLookAtEnabled = lookAt
+        }
     }
 
     // MARK: - Cleanup

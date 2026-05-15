@@ -13,7 +13,7 @@ class ModelInteractionView: NSView {
     var onScaleChanged: ((CGFloat) -> Void)?
 
     private(set) var currentScale: CGFloat = 1.0
-    private var skeletonCenter: CGPoint = .zero
+    private(set) var skeletonCenter: CGPoint = .zero
     private weak var targetViewer: (any ModelViewer)?
     private var cachedOriginalBounds: CGRect = .zero
 
@@ -115,6 +115,14 @@ class ModelInteractionView: NSView {
             width: visibleW,
             height: visibleH
         ))
+    }
+
+    func restoreState(scale: CGFloat, center: CGPoint) {
+        guard ensureOriginalBounds() else { return }
+        currentScale = min(max(scale, 0.1), 100.0)
+        skeletonCenter = center
+        updateProjection()
+        onScaleChanged?(currentScale)
     }
 
     func resetTransform() {

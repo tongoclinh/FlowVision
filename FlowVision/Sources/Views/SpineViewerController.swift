@@ -6,13 +6,18 @@
 import AppKit
 import MetalKit
 
-class SpineViewerController: ModelViewerController {
+enum SpinePMAMode: String, Codable, CaseIterable {
+    case auto = "Auto"
+    case pma = "PMA"
+    case straight = "Straight"
+}
 
-    enum SpinePMAMode: String, CaseIterable {
-        case auto = "Auto"
-        case pma = "PMA"
-        case straight = "Straight"
-    }
+struct SpineViewerSpecificState: Codable {
+    var selectedSkin: String?
+    var pmaMode: SpinePMAMode?
+}
+
+class SpineViewerController: ModelViewerController {
 
     private var spineView: SpineUIView?
     private(set) var spineController: SpineController?
@@ -22,6 +27,8 @@ class SpineViewerController: ModelViewerController {
 
     private(set) var availableAnimations: [String] = []
     private(set) var availableSkins: [String] = []
+    private var skinPopup: NSPopUpButton?
+    private var pmaPopup: NSPopUpButton?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -141,6 +148,8 @@ class SpineViewerController: ModelViewerController {
         }
         RunLoop.current.add(timer, forMode: .common)
         updateTimer = timer
+
+        loadSavedState()
     }
 
     private func buildSkinControls() -> NSView {
@@ -148,16 +157,17 @@ class SpineViewerController: ModelViewerController {
         skinLabel.font = .systemFont(ofSize: 11)
         skinLabel.textColor = .secondaryLabelColor
 
-        let skinPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-        skinPopup.controlSize = .small
-        skinPopup.font = .systemFont(ofSize: 11)
-        skinPopup.target = self
-        skinPopup.action = #selector(skinChanged(_:))
-        availableSkins.forEach { skinPopup.addItem(withTitle: $0) }
+        let skinBtn = NSPopUpButton(frame: .zero, pullsDown: false)
+        skinBtn.controlSize = .small
+        skinBtn.font = .systemFont(ofSize: 11)
+        skinBtn.target = self
+        skinBtn.action = #selector(skinChanged(_:))
+        availableSkins.forEach { skinBtn.addItem(withTitle: $0) }
+        self.skinPopup = skinBtn
 
         let hide = availableSkins.count <= 1
         skinLabel.isHidden = hide
-        skinPopup.isHidden = hide
+        skinBtn.isHidden = hide
 
         let skinSeparator = controlsBar?.makeVerticalSeparator() ?? NSView()
         skinSeparator.isHidden = hide
@@ -166,18 +176,19 @@ class SpineViewerController: ModelViewerController {
         pmaLabel.font = .systemFont(ofSize: 11)
         pmaLabel.textColor = .secondaryLabelColor
 
-        let pmaPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-        pmaPopup.controlSize = .small
-        pmaPopup.font = .systemFont(ofSize: 11)
-        pmaPopup.target = self
-        pmaPopup.action = #selector(pmaChanged(_:))
-        SpinePMAMode.allCases.forEach { pmaPopup.addItem(withTitle: $0.rawValue) }
+        let pmaBtn = NSPopUpButton(frame: .zero, pullsDown: false)
+        pmaBtn.controlSize = .small
+        pmaBtn.font = .systemFont(ofSize: 11)
+        pmaBtn.target = self
+        pmaBtn.action = #selector(pmaChanged(_:))
+        SpinePMAMode.allCases.forEach { pmaBtn.addItem(withTitle: $0.rawValue) }
+        self.pmaPopup = pmaBtn
 
         let pmaSeparator = controlsBar?.makeVerticalSeparator() ?? NSView()
 
         let stack = NSStackView(views: [
-            skinSeparator, skinLabel, skinPopup,
-            pmaSeparator, pmaLabel, pmaPopup
+            skinSeparator, skinLabel, skinBtn,
+            pmaSeparator, pmaLabel, pmaBtn
         ])
         stack.orientation = .horizontal
         stack.spacing = 6
@@ -204,6 +215,41 @@ class SpineViewerController: ModelViewerController {
             try sv.reloadRenderer(pma: pma)
         } catch {
             log("Failed to reload renderer with PMA mode \(mode.rawValue): \(error)")
+        }
+    }
+
+    // MARK: - State Persistence
+
+    override func collectViewerState() -> Encodable? {
+        SpineViewerSpecificState(
+            selectedSkin: skinPopup?.titleOfSelectedItem,
+            pmaMode: currentPMAMode
+        )
+    }
+
+    override func applyViewerState(from data: Data) {
+        guard let vs = try? JSONDecoder().decode(SpineViewerSpecificState.self, from: data)
+        else { return }
+
+        if let skinName = vs.selectedSkin, availableSkins.contains(skinName) {
+            skinPopup?.selectItem(withTitle: skinName)
+            spineController?.skeleton.setSkinByName(skinName: skinName)
+            spineController?.skeleton.setToSetupPose()
+        }
+
+        if let mode = vs.pmaMode {
+            pmaPopup?.selectItem(withTitle: mode.rawValue)
+            currentPMAMode = mode
+            if let sv = spineView {
+                let pma: Bool
+                switch mode {
+                case .auto: pma = sv.atlasPma
+                case .pma: pma = true
+                case .straight: pma = false
+                }
+                do { try sv.reloadRenderer(pma: pma) }
+                catch { log("Failed to apply saved PMA mode: \(error)") }
+            }
         }
     }
 

@@ -93,20 +93,12 @@ class ModelViewerController: NSViewController {
         case .solid(let color):
             checkerView?.isHidden = true
             view.layer?.backgroundColor = color.cgColor
-            let c = color.usingColorSpace(.sRGB) ?? color
-            let clear = MTLClearColor(
-                red: Double(c.redComponent), green: Double(c.greenComponent),
-                blue: Double(c.blueComponent), alpha: 1.0
-            )
-            modelViewer?.viewerView.clearColor = clear
-            modelViewer?.viewerView.layer?.isOpaque = true
         case .checker(let variant):
             checkerView?.variant = variant
             checkerView?.isHidden = false
             view.layer?.backgroundColor = nil
-            modelViewer?.viewerView.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
-            modelViewer?.viewerView.layer?.isOpaque = false
         }
+        modelViewer?.applyBackground(mode)
     }
 
     func showError(_ message: String) {
@@ -124,7 +116,62 @@ class ModelViewerController: NSViewController {
         ])
     }
 
+    // MARK: - State Persistence
+
+    func collectViewerState() -> Encodable? { nil }
+
+    func applyViewerState(from data: Data) {}
+
+    func loadSavedState() {
+        guard let data = ModelViewerStateManager.loadData(for: folderURL),
+              let state = ModelViewerStateManager.decodeBase(from: data) else { return }
+
+        if let speed = state.playbackSpeed {
+            controlsBar?.setSpeed(speed)
+            controlsBar?.onChangeSpeed?(speed)
+        }
+
+        if let loop = state.isLooping {
+            controlsBar?.setLoopState(loop)
+            controlsBar?.onToggleLoop?(loop)
+        }
+
+        if let anim = state.selectedAnimation {
+            controlsBar?.selectAnimationByName(anim)
+        }
+
+        if let scale = state.zoomScale, let center = state.panCenter {
+            interactionView?.restoreState(scale: CGFloat(scale), center: center.cgPoint)
+        }
+
+        applyViewerState(from: data)
+    }
+
+    func collectBaseState() -> ModelViewerState {
+        var state = ModelViewerState()
+        if let iv = interactionView {
+            state.zoomScale = iv.currentScale
+            state.panCenter = CodablePoint(iv.skeletonCenter)
+        }
+        if let bar = controlsBar {
+            state.selectedAnimation = bar.selectedAnimationName
+            state.playbackSpeed = bar.currentSpeed
+            state.isLooping = bar.currentLoopState
+        }
+        return state
+    }
+
+    func saveCurrentState() {
+        ModelViewerStateManager.save(
+            base: collectBaseState(), viewer: collectViewerState(), for: folderURL)
+    }
+
+    private var didCleanup = false
+
     func cleanup() {
+        guard !didCleanup else { return }
+        didCleanup = true
+        saveCurrentState()
         modelViewer?.viewerView.isPaused = true
         modelViewer?.viewerView.removeFromSuperview()
         modelViewer = nil
