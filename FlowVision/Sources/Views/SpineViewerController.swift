@@ -8,10 +8,17 @@ import MetalKit
 
 class SpineViewerController: ModelViewerController {
 
+    enum SpinePMAMode: String, CaseIterable {
+        case auto = "Auto"
+        case pma = "PMA"
+        case straight = "Straight"
+    }
+
     private var spineView: SpineUIView?
     private(set) var spineController: SpineController?
     private var updateTimer: Timer?
     private var isLooping = true
+    private var currentPMAMode: SpinePMAMode = .auto
 
     private(set) var availableAnimations: [String] = []
     private(set) var availableSkins: [String] = []
@@ -146,10 +153,26 @@ class SpineViewerController: ModelViewerController {
         skinLabel.isHidden = hide
         skinPopup.isHidden = hide
 
-        let separator = controlsBar?.makeVerticalSeparator() ?? NSView()
-        separator.isHidden = hide
+        let skinSeparator = controlsBar?.makeVerticalSeparator() ?? NSView()
+        skinSeparator.isHidden = hide
 
-        let stack = NSStackView(views: [separator, skinLabel, skinPopup])
+        let pmaLabel = NSTextField(labelWithString: "Blend:")
+        pmaLabel.font = .systemFont(ofSize: 11)
+        pmaLabel.textColor = .secondaryLabelColor
+
+        let pmaPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        pmaPopup.controlSize = .small
+        pmaPopup.font = .systemFont(ofSize: 11)
+        pmaPopup.target = self
+        pmaPopup.action = #selector(pmaChanged(_:))
+        SpinePMAMode.allCases.forEach { pmaPopup.addItem(withTitle: $0.rawValue) }
+
+        let pmaSeparator = controlsBar?.makeVerticalSeparator() ?? NSView()
+
+        let stack = NSStackView(views: [
+            skinSeparator, skinLabel, skinPopup,
+            pmaSeparator, pmaLabel, pmaPopup
+        ])
         stack.orientation = .horizontal
         stack.spacing = 6
         return stack
@@ -159,6 +182,23 @@ class SpineViewerController: ModelViewerController {
         guard let name = sender.titleOfSelectedItem else { return }
         spineController?.skeleton.setSkinByName(skinName: name)
         spineController?.skeleton.setToSetupPose()
+    }
+
+    @objc private func pmaChanged(_ sender: NSPopUpButton) {
+        guard let sv = spineView,
+              let mode = SpinePMAMode(rawValue: sender.titleOfSelectedItem ?? "") else { return }
+        currentPMAMode = mode
+        let pma: Bool
+        switch mode {
+        case .auto: pma = sv.atlasPma
+        case .pma: pma = true
+        case .straight: pma = false
+        }
+        do {
+            try sv.reloadRenderer(pma: pma)
+        } catch {
+            log("Failed to reload renderer with PMA mode \(mode.rawValue): \(error)")
+        }
     }
 
     override func cleanup() {

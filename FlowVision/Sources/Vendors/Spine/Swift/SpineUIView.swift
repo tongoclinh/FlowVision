@@ -48,6 +48,8 @@ public final class SpineUIView: MTKView {
     
     internal var computedBounds: CGRect = .zero
     internal var renderer: SpineRenderer?
+    private(set) var loadedAtlasPages: [NSImage] = []
+    private(set) var atlasPma: Bool = false
     
     @objc internal init(
         controller: SpineController = SpineController(),
@@ -232,24 +234,30 @@ extension SpineUIView {
     internal func load(drawable: SkeletonDrawableWrapper) throws {
         controller.drawable = drawable
         computedBounds = boundsProvider.computeBounds(for: drawable)
-        try initRenderer(
-            atlasPages: controller.drawable.atlasPages
-        )
+        loadedAtlasPages = controller.drawable.atlasPages
+        atlasPma = controller.drawable.atlas.isPma
+        try initRenderer(atlasPages: loadedAtlasPages, pma: atlasPma)
         controller.initialize()
     }
-    
-    private func initRenderer(atlasPages: [NSImage]) throws {
+
+    private func initRenderer(atlasPages: [NSImage], pma: Bool) throws {
         renderer = try SpineRenderer(
             device: SpineObjects.shared.device,
             commandQueue: SpineObjects.shared.commandQueue,
             pixelFormat: colorPixelFormat,
             atlasPages: atlasPages,
-            pma: controller.drawable.atlas.isPma
+            pma: pma
         )
         renderer?.delegate = controller
         renderer?.dataSource = controller
         renderer?.mtkView(self, drawableSizeWillChange: drawableSize)
         delegate = renderer
+    }
+
+    func reloadRenderer(pma: Bool) throws {
+        isPaused = true
+        try initRenderer(atlasPages: loadedAtlasPages, pma: pma)
+        isPaused = false
     }
 }
 
