@@ -50,7 +50,9 @@ CubismModelWrapper::CubismModelWrapper()
     : CubismUserModel()
     , _modelSetting(NULL)
     , _userTimeSeconds(0.0f)
-    , _motionQueueTimeSeconds(0.0f)
+    , _motionQueueTimeSeconds(0.0)
+    , _pendingSeekTime(0.0f)
+    , _hasPendingSeek(false)
     , _motionUpdated(false)
     , _physicsEnabled(true)
     , _textureLoader(NULL)
@@ -370,11 +372,22 @@ void CubismModelWrapper::ReleaseExpressions()
     _expressions.Clear();
 }
 
+void CubismModelWrapper::ApplyPendingSeek()
+{
+    if (!_hasPendingSeek) return;
+    _hasPendingSeek = false;
+    auto* entry = GetLatestMotionEntry();
+    if (entry == NULL || !entry->IsStarted()) return;
+    entry->SetStartTime(static_cast<Csm::csmFloat32>(_motionQueueTimeSeconds) - _pendingSeekTime);
+}
+
 void CubismModelWrapper::Update(float speedMultiplier)
 {
     const Csm::csmFloat32 deltaTimeSeconds = Pal::GetDeltaTime() * speedMultiplier;
     _userTimeSeconds += deltaTimeSeconds;
-    _motionQueueTimeSeconds += deltaTimeSeconds;
+    _motionQueueTimeSeconds += static_cast<double>(deltaTimeSeconds);
+
+    ApplyPendingSeek();
 
     _motionUpdated = false;
 
@@ -562,13 +575,13 @@ Csm::csmFloat32 CubismModelWrapper::GetCurrentMotionTime()
     auto* entry = GetLatestMotionEntry();
     if (entry == NULL || !entry->IsStarted()) return 0.0f;
 
-    float elapsed = _motionQueueTimeSeconds - entry->GetStartTime();
+    double elapsed = _motionQueueTimeSeconds - static_cast<double>(entry->GetStartTime());
     auto* motion = entry->GetCubismMotion();
-    if (motion == NULL) return fmaxf(elapsed, 0.0f);
+    if (motion == NULL) return static_cast<float>(fmax(elapsed, 0.0));
 
     float duration = motion->GetDuration();
-    if (duration <= 0) return fmaxf(elapsed, 0.0f);
-    return fmodf(fmaxf(elapsed, 0.0f), duration);
+    if (duration <= 0) return static_cast<float>(fmax(elapsed, 0.0));
+    return static_cast<float>(fmod(fmax(elapsed, 0.0), static_cast<double>(duration)));
 }
 
 Csm::csmFloat32 CubismModelWrapper::GetCurrentMotionDuration()
@@ -583,9 +596,8 @@ Csm::csmFloat32 CubismModelWrapper::GetCurrentMotionDuration()
 
 void CubismModelWrapper::SeekMotionTo(Csm::csmFloat32 time)
 {
-    auto* entry = GetLatestMotionEntry();
-    if (entry == NULL || !entry->IsStarted()) return;
-    entry->SetStartTime(_motionQueueTimeSeconds - time);
+    _pendingSeekTime = time;
+    _hasPendingSeek = true;
 }
 
 void CubismModelWrapper::MotionEventFired(const Live2D::Cubism::Framework::csmString& eventValue)

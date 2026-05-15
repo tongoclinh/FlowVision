@@ -131,7 +131,7 @@ class SpineViewerController: ModelViewerController {
             self?.controlsBar?.selectAdjacentAnimation(next: true)
         }
 
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0/15, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1.0/15, repeats: true) { [weak self] _ in
             guard let self, let entry = self.spineController?.animationState.getCurrent(trackIndex: 0)
             else { return }
             let duration = entry.animation.duration
@@ -139,6 +139,8 @@ class SpineViewerController: ModelViewerController {
                 : (duration > 0 ? entry.trackTime.truncatingRemainder(dividingBy: duration) : 0)
             self.controlsBar?.updateTime(current: current, duration: duration)
         }
+        RunLoop.current.add(timer, forMode: .common)
+        updateTimer = timer
     }
 
     private func buildSkinControls() -> NSView {

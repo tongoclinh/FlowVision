@@ -58,6 +58,7 @@ public:
     Csm::csmFloat32 GetCurrentMotionTime();
     Csm::csmFloat32 GetCurrentMotionDuration();
     void SeekMotionTo(Csm::csmFloat32 time);
+    void ApplyPendingSeek();
 
 protected:
     void DoDraw();
@@ -74,7 +75,9 @@ private:
     Csm::ICubismModelSetting* _modelSetting;
     Csm::csmString _modelHomeDir;
     Csm::csmFloat32 _userTimeSeconds;
-    Csm::csmFloat32 _motionQueueTimeSeconds;
+    double _motionQueueTimeSeconds;
+    Csm::csmFloat32 _pendingSeekTime;
+    Csm::csmBool _hasPendingSeek;
     Csm::csmVector<Csm::CubismIdHandle> _eyeBlinkIds;
     Csm::csmVector<Csm::CubismIdHandle> _lipSyncIds;
     Csm::csmMap<Csm::csmString, Csm::ACubismMotion*> _motions;

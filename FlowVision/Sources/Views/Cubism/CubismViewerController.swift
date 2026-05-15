@@ -64,7 +64,7 @@ class CubismViewerController: ModelViewerController {
             guard let self, let cv = self.cubismView else { return }
             self.isPlaying.toggle()
             cv.animationPaused = !self.isPlaying
-            bar.updatePlayState(self.isPlaying)
+            self.controlsBar?.updatePlayState(self.isPlaying)
         }
 
         bar.onSelectAnimation = { [weak self] name in
@@ -84,12 +84,14 @@ class CubismViewerController: ModelViewerController {
 
         bar.additionalControlsView = buildCubismControls(cv: cv)
 
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0/15, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1.0/15, repeats: true) { [weak self] _ in
             guard let self, let cv = self.cubismView else { return }
             let current = cv.modelHandle.currentMotionTime
             let duration = cv.modelHandle.currentMotionDuration
             self.controlsBar?.updateTime(current: current, duration: duration)
         }
+        RunLoop.current.add(timer, forMode: .common)
+        updateTimer = timer
     }
 
     // MARK: - Cubism-specific controls
