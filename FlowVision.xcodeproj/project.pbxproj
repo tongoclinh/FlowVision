@@ -38,6 +38,7 @@
 		5D09A748F516D82E107408EE /* PathConstraintMixTimeline.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F185E51ACDF222866B4CA969 /* PathConstraintMixTimeline.cpp */; };
 		5F8412C2A307034F91431089 /* PhysicsConstraint.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AF31853E4868CFAD5F8941C6 /* PhysicsConstraint.cpp */; };
 		6A2E274468CDB0A987507E3E /* SpineViewerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E289CD6841003BB2006B1F4B /* SpineViewerController.swift */; };
+		EAB6F544B30F299F9FD114EF /* SpineCompositeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EFCBD4DB5DCB59C695A0AA2 /* SpineCompositeController.swift */; };
 		6A76CFAF75E6F96022F5C7BD /* SkeletonRenderer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81DB5AE2DACD8880A05B85CD /* SkeletonRenderer.cpp */; };
 		6AAC8E861E1D52B599F24623 /* AttachmentLoader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 494322CD0A6872CBC0FFCB79 /* AttachmentLoader.cpp */; };
 		6DA5BE2984AD3983FB1B9B7D /* AttachmentTimeline.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 852CC0F53A968FC0D0BCCAD6 /* AttachmentTimeline.cpp */; };
@@ -581,6 +582,7 @@
 		E00E13C3056A4910B242187C /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		E06CA84809EAB2BFCAFA1027 /* BoneData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BoneData.h; sourceTree = "<group>"; };
 		E289CD6841003BB2006B1F4B /* SpineViewerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpineViewerController.swift; sourceTree = "<group>"; };
+		6EFCBD4DB5DCB59C695A0AA2 /* SpineCompositeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpineCompositeController.swift; sourceTree = "<group>"; };
 		E454251987307549EDA0C0C3 /* RTTI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RTTI.h; sourceTree = "<group>"; };
 		E461E135A4075A02BF7E807D /* SkeletonDrawableWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkeletonDrawableWrapper.swift; sourceTree = "<group>"; };
 		E509B5B24BB7972EB968601F /* SkeletonJson.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = SkeletonJson.cpp; sourceTree = "<group>"; };
@@ -1295,6 +1297,7 @@
 				F73865D42C37B9B800837FE4 /* Layout.swift */,
 				F7AA00002F9E000000AA0001 /* VideoPlayerControlsView.swift */,
 				E289CD6841003BB2006B1F4B /* SpineViewerController.swift */,
+				6EFCBD4DB5DCB59C695A0AA2 /* SpineCompositeController.swift */,
 				MVG00000000000000000001 /* ModelViewer */,
 				CUG0000000000000000001 /* Cubism */,
 			);
@@ -1691,6 +1694,7 @@
 				EB5537852867698D393ED2DB /* SpineView.swift in Sources */,
 				FED03C84E7AC6F2BC1B4F08E /* SpineDetector.swift in Sources */,
 				6A2E274468CDB0A987507E3E /* SpineViewerController.swift in Sources */,
+				EAB6F544B30F299F9FD114EF /* SpineCompositeController.swift in Sources */,
 				MV0001010101010101010101 /* ModelViewerProtocol.swift in Sources */,
 				MV0002020202020202020202 /* ModelDetectorProtocol.swift in Sources */,
 				MV0003030303030303030303 /* ModelInteractionView.swift in Sources */,

@@ -939,9 +939,14 @@ extension ViewController {
                 largeImageView.imageView.isHidden = true
 
                 if let folderURL = URL(string: file.path) {
-                    let viewer: ModelViewerController = file.type == .cubism
-                        ? CubismViewerController(folderURL: folderURL)
-                        : SpineViewerController(folderURL: folderURL)
+                    let viewer: ModelViewerController
+                    if file.type == .cubism {
+                        viewer = CubismViewerController(folderURL: folderURL)
+                    } else if let config = ModelViewerStateManager.loadCompositeConfig(for: folderURL) {
+                        viewer = SpineCompositeController(folderURL: folderURL, config: config)
+                    } else {
+                        viewer = SpineViewerController(folderURL: folderURL)
+                    }
                     addChild(viewer)
                     viewer.view.frame = largeImageView.bounds
                     viewer.view.autoresizingMask = [.width, .height]

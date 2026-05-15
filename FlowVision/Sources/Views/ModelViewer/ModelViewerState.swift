@@ -17,6 +17,11 @@ struct CodablePoint: Codable {
     var cgPoint: CGPoint { CGPoint(x: x, y: y) }
 }
 
+struct CompositeConfig: Codable {
+    var layers: [String]
+    var mainLayer: String?
+}
+
 struct ModelViewerState: Codable {
     var version: Int = 1
 
@@ -40,13 +45,26 @@ enum ModelViewerStateManager {
         try? JSONDecoder().decode(ModelViewerState.self, from: data)
     }
 
+    static func loadCompositeConfig(for folderURL: URL) -> CompositeConfig? {
+        guard let data = loadData(for: folderURL),
+              let config = try? JSONDecoder().decode(CompositeConfig.self, from: data),
+              !config.layers.isEmpty else { return nil }
+        return config
+    }
+
     // Keys are flat-merged: viewer keys must not collide with base keys.
+    // Preserves unknown keys (e.g. layers, mainLayer) from existing sidecar.
     static func save(base: ModelViewerState, viewer: Encodable?, for folderURL: URL) {
         let url = folderURL.appendingPathComponent(fileName)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         do {
-            var dict = try encodeToDictionary(base, encoder: encoder)
+            var dict = [String: Any]()
+            if let existing = try? Data(contentsOf: url),
+               let existingDict = try? JSONSerialization.jsonObject(with: existing) as? [String: Any] {
+                dict = existingDict
+            }
+            dict.merge(try encodeToDictionary(base, encoder: encoder)) { _, new in new }
             if let viewer {
                 if let viewerDict = try? encodeToDictionary(viewer, encoder: encoder) {
                     dict.merge(viewerDict) { _, new in new }

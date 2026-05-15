@@ -11,6 +11,7 @@ class ModelInteractionView: NSView {
     var onPrevAnimation: (() -> Void)?
     var onNextAnimation: (() -> Void)?
     var onScaleChanged: ((CGFloat) -> Void)?
+    var additionalViewers: [any ModelViewer] = []
 
     private(set) var currentScale: CGFloat = 1.0
     private(set) var skeletonCenter: CGPoint = .zero
@@ -109,12 +110,16 @@ class ModelInteractionView: NSView {
     private func updateProjection() {
         let visibleW = cachedOriginalBounds.width / currentScale
         let visibleH = cachedOriginalBounds.height / currentScale
-        targetViewer?.setProjection(visibleBounds: CGRect(
+        let bounds = CGRect(
             x: skeletonCenter.x - visibleW / 2,
             y: skeletonCenter.y - visibleH / 2,
             width: visibleW,
             height: visibleH
-        ))
+        )
+        targetViewer?.setProjection(visibleBounds: bounds)
+        for viewer in additionalViewers {
+            viewer.setProjection(visibleBounds: bounds)
+        }
     }
 
     func restoreState(scale: CGFloat, center: CGPoint) {
@@ -130,6 +135,9 @@ class ModelInteractionView: NSView {
         currentScale = 1.0
         skeletonCenter = CGPoint(x: cachedOriginalBounds.midX, y: cachedOriginalBounds.midY)
         targetViewer?.viewerView.layer?.setAffineTransform(.identity)
+        for viewer in additionalViewers {
+            viewer.viewerView.layer?.setAffineTransform(.identity)
+        }
         updateProjection()
         onScaleChanged?(currentScale)
     }
