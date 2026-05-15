@@ -11,6 +11,7 @@ class CubismViewerController: ModelViewerController {
     private var cubismView: CubismUIView?
     private var isPlaying = true
     private var allModels: [CubismModelFiles] = []
+    private var updateTimer: Timer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -77,8 +78,18 @@ class CubismViewerController: ModelViewerController {
         bar.onChangeBgColor = { [weak self] color in
             self?.applyBackgroundMode(.solid(color))
         }
+        bar.onScrub = { [weak cv] time in
+            cv?.modelHandle.seekMotion(to: time)
+        }
 
         bar.additionalControlsView = buildCubismControls(cv: cv)
+
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0/15, repeats: true) { [weak self] _ in
+            guard let self, let cv = self.cubismView else { return }
+            let current = cv.modelHandle.currentMotionTime
+            let duration = cv.modelHandle.currentMotionDuration
+            self.controlsBar?.updateTime(current: current, duration: duration)
+        }
     }
 
     // MARK: - Cubism-specific controls
@@ -194,6 +205,8 @@ class CubismViewerController: ModelViewerController {
     // MARK: - Cleanup
 
     override func cleanup() {
+        updateTimer?.invalidate()
+        updateTimer = nil
         cubismView?.dispose()
         cubismView = nil
         super.cleanup()

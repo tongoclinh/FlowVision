@@ -50,6 +50,7 @@ CubismModelWrapper::CubismModelWrapper()
     : CubismUserModel()
     , _modelSetting(NULL)
     , _userTimeSeconds(0.0f)
+    , _motionQueueTimeSeconds(0.0f)
     , _motionUpdated(false)
     , _physicsEnabled(true)
     , _textureLoader(NULL)
@@ -373,6 +374,7 @@ void CubismModelWrapper::Update(float speedMultiplier)
 {
     const Csm::csmFloat32 deltaTimeSeconds = Pal::GetDeltaTime() * speedMultiplier;
     _userTimeSeconds += deltaTimeSeconds;
+    _motionQueueTimeSeconds += deltaTimeSeconds;
 
     _motionUpdated = false;
 
@@ -381,10 +383,7 @@ void CubismModelWrapper::Update(float speedMultiplier)
     {
         StartRandomMotion(MotionGroupIdle, PriorityIdle);
     }
-    else
-    {
-        _motionUpdated = _motionManager->UpdateMotion(_model, deltaTimeSeconds);
-    }
+    _motionUpdated = _motionManager->UpdateMotion(_model, deltaTimeSeconds);
     _model->SaveParameters();
 
     _opacity = _model->GetModelOpacity();
@@ -549,6 +548,44 @@ void CubismModelWrapper::SetDragPosition(Csm::csmFloat32 x, Csm::csmFloat32 y)
 void CubismModelWrapper::SetPhysicsEnabled(Csm::csmBool enabled)
 {
     _physicsEnabled = enabled;
+}
+
+CubismMotionQueueEntry* CubismModelWrapper::GetLatestMotionEntry()
+{
+    auto* entries = _motionManager->GetCubismMotionQueueEntries();
+    if (entries == NULL || entries->GetSize() == 0) return NULL;
+    return (*entries)[entries->GetSize() - 1];
+}
+
+Csm::csmFloat32 CubismModelWrapper::GetCurrentMotionTime()
+{
+    auto* entry = GetLatestMotionEntry();
+    if (entry == NULL || !entry->IsStarted()) return 0.0f;
+
+    float elapsed = _motionQueueTimeSeconds - entry->GetStartTime();
+    auto* motion = entry->GetCubismMotion();
+    if (motion == NULL) return fmaxf(elapsed, 0.0f);
+
+    float duration = motion->GetDuration();
+    if (duration <= 0) return fmaxf(elapsed, 0.0f);
+    return fmodf(fmaxf(elapsed, 0.0f), duration);
+}
+
+Csm::csmFloat32 CubismModelWrapper::GetCurrentMotionDuration()
+{
+    auto* entry = GetLatestMotionEntry();
+    if (entry == NULL) return 0.0f;
+
+    auto* motion = entry->GetCubismMotion();
+    if (motion == NULL) return 0.0f;
+    return motion->GetDuration();
+}
+
+void CubismModelWrapper::SeekMotionTo(Csm::csmFloat32 time)
+{
+    auto* entry = GetLatestMotionEntry();
+    if (entry == NULL || !entry->IsStarted()) return;
+    entry->SetStartTime(_motionQueueTimeSeconds - time);
 }
 
 void CubismModelWrapper::MotionEventFired(const Live2D::Cubism::Framework::csmString& eventValue)

@@ -115,6 +115,10 @@ class SpineViewerController: ModelViewerController {
         bar.onChangeBgColor = { [weak self] color in
             self?.applyBackgroundMode(.solid(color))
         }
+        bar.onScrub = { [weak self] time in
+            guard let entry = self?.spineController?.animationState.getCurrent(trackIndex: 0) else { return }
+            entry.trackTime = time
+        }
 
         // Spine-specific: skin picker
         let skinControls = buildSkinControls()

@@ -11,6 +11,7 @@
 #import <ICubismModelSetting.hpp>
 #import <Type/csmRectF.hpp>
 #import <Rendering/Metal/CubismRenderTarget_Metal.hpp>
+#import <Motion/CubismMotionQueueEntry.hpp>
 
 @class TextureLoader;
 
@@ -54,10 +55,15 @@ public:
     void SetDragPosition(Csm::csmFloat32 x, Csm::csmFloat32 y);
     void SetPhysicsEnabled(Csm::csmBool enabled);
 
+    Csm::csmFloat32 GetCurrentMotionTime();
+    Csm::csmFloat32 GetCurrentMotionDuration();
+    void SeekMotionTo(Csm::csmFloat32 time);
+
 protected:
     void DoDraw();
 
 private:
+    Csm::CubismMotionQueueEntry* GetLatestMotionEntry();
     void SetupModel(Csm::ICubismModelSetting* setting);
     void SetupTextures(TextureLoader* textureLoader);
     void PreloadMotionGroup(const Csm::csmChar* group);
@@ -68,6 +74,7 @@ private:
     Csm::ICubismModelSetting* _modelSetting;
     Csm::csmString _modelHomeDir;
     Csm::csmFloat32 _userTimeSeconds;
+    Csm::csmFloat32 _motionQueueTimeSeconds;
     Csm::csmVector<Csm::CubismIdHandle> _eyeBlinkIds;
     Csm::csmVector<Csm::CubismIdHandle> _lipSyncIds;
     Csm::csmMap<Csm::csmString, Csm::ACubismMotion*> _motions;

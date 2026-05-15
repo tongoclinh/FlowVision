@@ -67,6 +67,12 @@ NS_ASSUME_NONNULL_BEGIN
 /// Enable/disable physics simulation
 - (void)setPhysicsEnabled:(BOOL)enabled;
 
+// --- Motion Time ---
+
+@property (nonatomic, readonly) float currentMotionTime;
+@property (nonatomic, readonly) float currentMotionDuration;
+- (void)seekMotionTo:(float)time;
+
 // --- Update & Draw ---
 
 - (void)updateWithSpeed:(float)speedMultiplier;

@@ -12,6 +12,8 @@ class ModelControlsBar: NSVisualEffectView {
     var onToggleLoop: ((Bool) -> Void)?
     var onChangeBgColor: ((NSColor) -> Void)?
     var onChangeBgMode: ((BackgroundMode) -> Void)?
+    var onScrub: ((Float) -> Void)?
+    var onScrubEnd: (() -> Void)?
 
     var additionalControlsView: NSView? {
         didSet {
@@ -28,8 +30,10 @@ class ModelControlsBar: NSVisualEffectView {
     private let playBtn = NSButton()
     private let loopBtn = NSButton()
     private let speedPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let timeSlider = NSSlider()
     private let timeLabel = NSTextField(labelWithString: "")
     private let zoomLabel = NSTextField(labelWithString: "100%")
+    private(set) var isScrubbing = false
     private let bgColorWell = NSColorWell()
     private let bgModeSegment = NSSegmentedControl()
     private var animButtons: [NSButton] = []
@@ -69,6 +73,16 @@ class ModelControlsBar: NSVisualEffectView {
         timeLabel.textColor = .secondaryLabelColor
         timeLabel.setContentHuggingPriority(.required, for: .horizontal)
 
+        timeSlider.minValue = 0
+        timeSlider.maxValue = 1
+        timeSlider.doubleValue = 0
+        timeSlider.isContinuous = true
+        timeSlider.controlSize = .small
+        timeSlider.target = self
+        timeSlider.action = #selector(sliderChanged)
+        timeSlider.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        timeSlider.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
         zoomLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         zoomLabel.textColor = .secondaryLabelColor
         zoomLabel.setContentHuggingPriority(.required, for: .horizontal)
@@ -100,7 +114,7 @@ class ModelControlsBar: NSVisualEffectView {
 
         controlsStack = NSStackView(views: [
             playBtn, loopBtn, speedPopup,
-            spacer, timeLabel, zoomLabel, bgModeSegment, bgColorWell
+            timeSlider, timeLabel, spacer, zoomLabel, bgModeSegment, bgColorWell
         ])
         controlsStack.orientation = .horizontal
         controlsStack.spacing = 6
@@ -182,6 +196,10 @@ class ModelControlsBar: NSVisualEffectView {
 
     func updateTime(current: Float, duration: Float) {
         timeLabel.stringValue = String(format: "%.1f / %.1fs", current, duration)
+        if !isScrubbing && duration > 0 {
+            timeSlider.maxValue = Double(duration)
+            timeSlider.doubleValue = Double(current)
+        }
     }
 
     func applyBgMode(_ mode: BackgroundMode) {
@@ -206,6 +224,18 @@ class ModelControlsBar: NSVisualEffectView {
     }
 
     // MARK: - Actions
+
+    @objc private func sliderChanged() {
+        let value = Float(timeSlider.doubleValue)
+        if NSEvent.pressedMouseButtons & 1 != 0 {
+            isScrubbing = true
+            onScrub?(value)
+        } else {
+            isScrubbing = false
+            onScrub?(value)
+            onScrubEnd?()
+        }
+    }
 
     @objc private func playPauseTapped() { onPlayPause?() }
 

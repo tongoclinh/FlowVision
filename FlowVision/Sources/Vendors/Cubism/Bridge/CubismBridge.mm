@@ -243,6 +243,24 @@ static BOOL s_initialized = NO;
     _model->SetPhysicsEnabled(enabled ? true : false);
 }
 
+- (float)currentMotionTime
+{
+    if (!_model) return 0.0f;
+    return _model->GetCurrentMotionTime();
+}
+
+- (float)currentMotionDuration
+{
+    if (!_model) return 0.0f;
+    return _model->GetCurrentMotionDuration();
+}
+
+- (void)seekMotionTo:(float)time
+{
+    if (!_model) return;
+    _model->SeekMotionTo(time);
+}
+
 // --- Update & Draw ---
 
 - (void)updateWithSpeed:(float)speedMultiplier
