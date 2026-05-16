@@ -882,8 +882,21 @@ extension ViewController {
                 return nil
             }
             
-            if currentModelViewer != nil && ["-", "=", "+", "0", "[", "]"].contains(characters) && noModifierKey {
-                return event
+            // Model viewer shortcuts. Brackets are dispatched directly so they work
+            // regardless of which subview currently holds first responder; zoom keys
+            // still flow through the responder chain so existing handlers apply.
+            if currentModelViewer != nil && noModifierKey {
+                if characters == "[" {
+                    currentModelViewer?.interactionView?.onPrevAnimation?()
+                    return nil
+                }
+                if characters == "]" {
+                    currentModelViewer?.interactionView?.onNextAnimation?()
+                    return nil
+                }
+                if ["-", "=", "+", "0"].contains(characters) {
+                    return event
+                }
             }
 
             // 检查按键是否是 -、-(小键盘) 键
