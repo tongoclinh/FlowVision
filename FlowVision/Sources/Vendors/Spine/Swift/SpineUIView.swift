@@ -50,6 +50,9 @@ public final class SpineUIView: MTKView {
     internal var renderer: SpineRenderer?
     private(set) var loadedAtlasPages: [NSImage] = []
     private(set) var atlasPma: Bool = false
+
+    /// Held by SpineRenderer.draw so captureSnapshot can read the last rendered frame.
+    internal var lastRenderedTexture: MTLTexture?
     
     @objc internal init(
         controller: SpineController = SpineController(),
@@ -67,6 +70,7 @@ public final class SpineUIView: MTKView {
         clearColor = MTLClearColor(backgroundColor)
         // macOS: MTKView.isOpaque is read-only; layer opacity controls transparency
         layer?.isOpaque = backgroundColor != .clear
+        framebufferOnly = false
     }
     
     /// An initializer that constructs a new ``SpineUIView`` from a ``SpineViewSource``.

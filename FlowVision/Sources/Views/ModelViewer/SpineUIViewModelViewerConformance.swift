@@ -17,4 +17,9 @@ extension SpineUIView: ModelViewer {
     func originalBounds() -> CGRect {
         computedBounds
     }
+
+    func captureSnapshot(maxSize: CGFloat) -> CGImage? {
+        guard let texture = lastRenderedTexture else { return nil }
+        return ModelSnapshot.cgImage(from: texture, maxSize: maxSize)
+    }
 }

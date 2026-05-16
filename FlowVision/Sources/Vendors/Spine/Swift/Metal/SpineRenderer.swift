@@ -169,8 +169,12 @@ internal final class SpineRenderer: NSObject, MTKViewDelegate {
         delegate?.spineRendererDidDraw(self)
         
         renderEncoder.endEncoding()
-        view.currentDrawable.flatMap {
-            commandBuffer.present($0)
+        view.currentDrawable.flatMap { drawable in
+            // FlowVision: hold last drawable texture for snapshot capture (thumbnail feature).
+            if let sv = view as? SpineUIView {
+                sv.lastRenderedTexture = drawable.texture
+            }
+            commandBuffer.present(drawable)
         }
         commandBuffer.addCompletedHandler { [bufferingSemaphore] _ in
             bufferingSemaphore.signal()

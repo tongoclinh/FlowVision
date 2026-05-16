@@ -25,6 +25,8 @@ final class CubismUIView: MTKView, ModelViewer {
     var viewerView: MTKView { self }
     var isYAxisFlipped: Bool { false }
 
+    private var lastRenderedTexture: MTLTexture?
+
     init() {
         let device = MTLCreateSystemDefaultDevice()!
         super.init(frame: .zero, device: device)
@@ -35,6 +37,12 @@ final class CubismUIView: MTKView, ModelViewer {
         depthStencilPixelFormat = .depth32Float
         clearColor = MTLClearColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1.0)
         layer?.isOpaque = true
+        framebufferOnly = false
+    }
+
+    func captureSnapshot(maxSize: CGFloat) -> CGImage? {
+        guard let texture = lastRenderedTexture else { return nil }
+        return ModelSnapshot.cgImage(from: texture, maxSize: maxSize)
     }
 
     @available(*, unavailable)
@@ -273,6 +281,8 @@ extension CubismUIView: MTKViewDelegate {
         )
 
         if let drawable = view.currentDrawable {
+            // Keep a strong ref to the texture so captureSnapshot can read it after the frame.
+            lastRenderedTexture = drawable.texture
             commandBuffer.present(drawable)
         }
         commandBuffer.commit()
