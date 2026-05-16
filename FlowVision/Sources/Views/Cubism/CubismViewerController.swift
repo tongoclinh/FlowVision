@@ -30,82 +30,88 @@ class CubismViewerController: ModelViewerController {
     }
 
     private func loadCubismModel(at index: Int = 0) {
-        let t0 = CFAbsoluteTimeGetCurrent()
         guard MTLCreateSystemDefaultDevice() != nil else {
             showError("Metal is not available on this system")
             return
         }
-        let t1 = CFAbsoluteTimeGetCurrent()
 
         allModels = CubismDetector.findModelFiles(in: folderURL)
         guard !allModels.isEmpty else {
             showError("No Cubism model found in\n\(folderURL.path)")
             return
         }
-        let t2 = CFAbsoluteTimeGetCurrent()
 
         loadTask?.cancel()
         cubismView?.dispose()
         interactionView?.subviews.filter { $0 is MTKView }.forEach { $0.removeFromSuperview() }
-        let t3 = CFAbsoluteTimeGetCurrent()
 
         let cv = CubismUIView()
-        let t4 = CFAbsoluteTimeGetCurrent()
         cv.isPaused = true
         cv.frame = interactionView?.bounds ?? view.bounds
         cv.autoresizingMask = [.width, .height]
 
-        let folder = folderURL
-        let files = allModels[index]
-
-        log("[NAV-DBG] Cubism: viewDidLoad sync: metal=\(String(format:"%.1f",(t1-t0)*1000)) findFiles=\(String(format:"%.1f",(t2-t1)*1000)) cleanup=\(String(format:"%.1f",(t3-t2)*1000)) initView=\(String(format:"%.1f",(t4-t3)*1000))ms → launching DispatchQueue.global")
-
         let handle = cv.modelHandle
         let device = cv.device!
-        let queue = cv.commandQueue
+        let queue = cv.commandQueue!
         let viewSize = cv.bounds.size.width > 0 ? cv.bounds.size : CGSize(width: 800, height: 600)
+        let folder = folderURL
+        let files = allModels[index]
         let jsonName = files.modelJson.lastPathComponent
         cv.folderURL = folder
         cv.modelJsonName = jsonName
 
         loadTask = Task { [weak self] in
-            let bgDone = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+            let ok = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
                 DispatchQueue.global(qos: .userInitiated).async {
-                    log("[NAV-DBG] Cubism: loadModel BEGIN isMainThread=\(Thread.isMainThread)")
                     CubismEngine.start(with: device)
-                    let ok = handle.load(
+                    let result = handle.load(
                         fromPath: folder.path,
                         jsonFileName: jsonName,
                         width: Float(viewSize.width),
                         height: Float(viewSize.height),
                         device: device,
-                        commandQueue: queue!
+                        commandQueue: queue
                     )
-                    log("[NAV-DBG] Cubism: loadModel END ok=\(ok)")
-                    cont.resume(returning: ok)
+                    cont.resume(returning: result)
                 }
             }
-            guard !Task.isCancelled, bgDone else {
+
+            guard !Task.isCancelled, ok else {
                 await MainActor.run { [weak self] in
-                    if !Task.isCancelled { self?.showError("Failed to load Cubism model from\n\(folder.path)") }
+                    if !Task.isCancelled {
+                        self?.showError("Failed to load Cubism model from\n\(folder.path)")
+                    }
+                    cv.dispose()
                 }
                 return
             }
-            guard let self, self.view.window != nil, !Task.isCancelled else {
-                cv.dispose()
-                return
+
+            await MainActor.run { [weak self] in
+                guard let self, self.view.window != nil, !Task.isCancelled else {
+                    cv.dispose()
+                    return
+                }
+                cv.buildMotionList()
+                cv.isHidden = true
+                self.interactionView?.addSubview(cv)
+                // MTKView needs real bounds — autoresizingMask is ignored when parent uses Auto Layout
+                cv.translatesAutoresizingMaskIntoConstraints = false
+                if let iv = self.interactionView {
+                    NSLayoutConstraint.activate([
+                        cv.topAnchor.constraint(equalTo: iv.topAnchor),
+                        cv.leadingAnchor.constraint(equalTo: iv.leadingAnchor),
+                        cv.trailingAnchor.constraint(equalTo: iv.trailingAnchor),
+                        cv.bottomAnchor.constraint(equalTo: iv.bottomAnchor),
+                    ])
+                }
+                self.cubismView = cv
+                self.modelViewer = cv
+                self.installControlsBar()
+                self.setupCubismControls()
+                cv.isHidden = false
+                cv.isPaused = false
+                self.onModelReady()
             }
-            log("[NAV-DBG] Cubism: MainActor setup + onModelReady")
-            cv.buildMotionList()
-            cv.isHidden = true
-            self.interactionView?.addSubview(cv)
-            self.cubismView = cv
-            self.modelViewer = cv
-            self.installControlsBar()
-            self.setupCubismControls()
-            cv.isHidden = false
-            cv.isPaused = false
-            self.onModelReady()
         }
     }
 
