@@ -832,7 +832,10 @@ class CustomCollectionViewItem: NSCollectionViewItem {
         
         // 占位背景色和边框颜色
         // Placeholder background color and border color
-        if file.isDir {
+        // Model folders with captured thumbnail (signaled by imageInfo on a directory)
+        // share the image-tile card styling for visual parity with files.
+        let isModelFolderWithThumb = file.isDir && file.imageInfo != nil
+        if file.isDir && !isModelFolderWithThumb {
             imageViewObj.layer?.backgroundColor = hexToNSColor(alpha: 0).cgColor
             view.layer?.backgroundColor = hexToNSColor(alpha: 0).cgColor
         // 文件
