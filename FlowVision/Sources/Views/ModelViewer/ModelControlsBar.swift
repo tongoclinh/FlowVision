@@ -30,7 +30,7 @@ class ModelControlsBar: NSVisualEffectView {
     private let playBtn = NSButton()
     private let loopBtn = NSButton()
     private let speedPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-    private let timeSlider = NSSlider()
+    private let timeSlider = ScrubSlider()
     private let timeLabel = NSTextField(labelWithString: "")
     private let zoomLabel = NSTextField(labelWithString: "100%")
     private(set) var isScrubbing = false
@@ -82,6 +82,13 @@ class ModelControlsBar: NSVisualEffectView {
         timeSlider.action = #selector(sliderChanged)
         timeSlider.setContentHuggingPriority(.defaultLow, for: .horizontal)
         timeSlider.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        // NSSlider with isContinuous=true does not deliver its action on mouseUp,
+        // so rely on the subclass's explicit mouseUp hook to clear scrubbing state.
+        timeSlider.onTrackingEnd = { [weak self] in
+            guard let self else { return }
+            self.isScrubbing = false
+            self.onScrubEnd?()
+        }
 
         zoomLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         zoomLabel.textColor = .secondaryLabelColor
@@ -262,15 +269,13 @@ class ModelControlsBar: NSVisualEffectView {
     // MARK: - Actions
 
     @objc private func sliderChanged() {
-        let value = Float(timeSlider.doubleValue)
+        // Only flag a mouse-drag scrub. Arrow-key adjustments leave the mouse
+        // unpressed and produce no mouseUp, so they would otherwise pin
+        // isScrubbing=true and freeze the auto-updating thumb.
         if NSEvent.pressedMouseButtons & 1 != 0 {
             isScrubbing = true
-            onScrub?(value)
-        } else {
-            isScrubbing = false
-            onScrub?(value)
-            onScrubEnd?()
         }
+        onScrub?(Float(timeSlider.doubleValue))
     }
 
     @objc private func playPauseTapped() { onPlayPause?() }
@@ -314,6 +319,16 @@ class ModelControlsBar: NSVisualEffectView {
         case 2: onChangeBgMode?(.checker(.light))
         default: onChangeBgMode?(.solid(bgColorWell.color))
         }
+    }
+}
+
+/// NSSlider with isContinuous=true never invokes its action on mouseUp,
+/// leaving callers unable to detect end-of-scrub. This override fills that gap.
+private class ScrubSlider: NSSlider {
+    var onTrackingEnd: (() -> Void)?
+    override func mouseUp(with event: NSEvent) {
+        super.mouseUp(with: event)
+        onTrackingEnd?()
     }
 }
 
