@@ -102,17 +102,28 @@ class SpineCompositeController: ModelViewerController {
                     atlasFile: atlasURL, skeletonFile: skelURL)
                 let drawable = try await source.loadDrawable()
                 guard !Task.isCancelled else { return }
+
+                // Build renderer off-main to keep navigation responsive during heavy loads
+                let renderer = try SpineRenderer(
+                    device: SpineObjects.shared.device,
+                    commandQueue: SpineObjects.shared.commandQueue,
+                    pixelFormat: .bgra8Unorm,
+                    atlasPages: drawable.atlasPages,
+                    pma: drawable.atlas.isPma
+                )
+                guard !Task.isCancelled else { return }
+
                 await MainActor.run { [weak self] in
                     guard let self, self.view.window != nil, !Task.isCancelled else { return }
                     let container = self.interactionView ?? self.view
                     let sv = SpineUIView(
-                        from: .drawable(drawable),
                         controller: controller,
                         mode: .fit,
                         alignment: .center,
                         boundsProvider: SetupPoseBounds(),
                         backgroundColor: bgColor
                     )
+                    sv.attach(prebuiltRenderer: renderer, drawable: drawable)
                     sv.isHidden = true
                     sv.frame = container.bounds
                     sv.autoresizingMask = [.width, .height]

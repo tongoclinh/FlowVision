@@ -74,18 +74,31 @@ class SpineViewerController: ModelViewerController {
                 let drawable = try await source.loadDrawable()
                 log("[NAV-DBG] Spine: loadDrawable END cancelled=\(Task.isCancelled)")
                 guard !Task.isCancelled else { return }
+
+                // Build renderer on background — for heavy models this is the dominant cost
+                // (shader compilation, atlas texture upload, pipeline states).
+                let renderer = try SpineRenderer(
+                    device: SpineObjects.shared.device,
+                    commandQueue: SpineObjects.shared.commandQueue,
+                    pixelFormat: .bgra8Unorm,
+                    atlasPages: drawable.atlasPages,
+                    pma: drawable.atlas.isPma
+                )
+                log("[NAV-DBG] Spine: renderer built cancelled=\(Task.isCancelled)")
+                guard !Task.isCancelled else { return }
+
                 await MainActor.run { [weak self] in
                     guard let self, self.view.window != nil, !Task.isCancelled else { return }
-                    log("[NAV-DBG] Spine: MainActor creating SpineUIView")
+                    log("[NAV-DBG] Spine: MainActor attaching prebuilt renderer")
                     let container = self.interactionView ?? self.view
                     let sv = SpineUIView(
-                        from: .drawable(drawable),
                         controller: controller,
                         mode: .fit,
                         alignment: .center,
                         boundsProvider: SetupPoseBounds(),
                         backgroundColor: .black
                     )
+                    sv.attach(prebuiltRenderer: renderer, drawable: drawable)
                     sv.isHidden = true
                     sv.frame = container.bounds
                     sv.autoresizingMask = [.width, .height]

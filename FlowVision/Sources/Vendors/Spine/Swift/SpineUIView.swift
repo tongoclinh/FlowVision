@@ -240,6 +240,22 @@ extension SpineUIView {
         controller.initialize()
     }
 
+    /// Attach a pre-constructed renderer (built off-main) and finish wiring on main thread.
+    /// Use for async loading where SpineRenderer creation runs in the background to keep
+    /// the main thread free during heavy texture/pipeline setup.
+    internal func attach(prebuiltRenderer: SpineRenderer, drawable: SkeletonDrawableWrapper) {
+        controller.drawable = drawable
+        computedBounds = boundsProvider.computeBounds(for: drawable)
+        loadedAtlasPages = controller.drawable.atlasPages
+        atlasPma = controller.drawable.atlas.isPma
+        renderer = prebuiltRenderer
+        prebuiltRenderer.delegate = controller
+        prebuiltRenderer.dataSource = controller
+        prebuiltRenderer.mtkView(self, drawableSizeWillChange: drawableSize)
+        delegate = prebuiltRenderer
+        controller.initialize()
+    }
+
     private func initRenderer(atlasPages: [NSImage], pma: Bool) throws {
         renderer = try SpineRenderer(
             device: SpineObjects.shared.device,
