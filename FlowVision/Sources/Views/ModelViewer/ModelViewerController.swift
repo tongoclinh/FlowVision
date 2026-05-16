@@ -189,7 +189,7 @@ class ModelViewerController: NSViewController {
 
     func saveCurrentState() {
         // Capture thumbnail while the MTKView is still rendering — must run before pause/remove.
-        if let snapshot = modelViewer?.captureSnapshot(maxSize: 512) {
+        if let snapshot = modelViewer?.captureSnapshot(maxSize: ModelViewerStateManager.thumbnailMaxSize) {
             ModelViewerStateManager.saveThumbnail(snapshot, for: folderURL)
         }
         ModelViewerStateManager.save(

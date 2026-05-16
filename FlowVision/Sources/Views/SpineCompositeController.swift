@@ -279,7 +279,7 @@ class SpineCompositeController: ModelViewerController {
     /// Composite all layers in subview order (bottom → top) so the saved thumbnail
     /// reflects what the user actually sees, not just the main layer.
     override func saveCurrentState() {
-        if let snapshot = captureCompositeSnapshot(maxSize: 512) {
+        if let snapshot = captureCompositeSnapshot(maxSize: ModelViewerStateManager.thumbnailMaxSize) {
             ModelViewerStateManager.saveThumbnail(snapshot, for: folderURL)
         }
         ModelViewerStateManager.save(

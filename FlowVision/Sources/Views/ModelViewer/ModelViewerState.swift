@@ -44,6 +44,9 @@ enum ModelViewerStateManager {
 
     static let fileName = ".flowvision.json"
     static let thumbnailFileName = ".flowvision-thumb.png"
+    /// Sized for 2× retina grid display; ModelSnapshot.resize only scales down,
+    /// so this acts as a cap rather than an upscale.
+    static let thumbnailMaxSize: CGFloat = 1024
 
     static func thumbnailURL(for folderURL: URL) -> URL {
         folderURL.appendingPathComponent(thumbnailFileName)
