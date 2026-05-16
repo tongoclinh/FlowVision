@@ -731,6 +731,15 @@ class CustomCollectionViewItem: NSCollectionViewItem {
         }
     }
     
+    /// True if `file` is a directory containing `.flowvision-thumb.png`.
+    /// Used by selectedColor/deselectedColor to apply the file-style card background
+    /// to model folders. macOS caches stat results so the FS hit is cheap per render.
+    private func hasModelThumbnail() -> Bool {
+        guard file.isDir, let url = URL(string: file.path) else { return false }
+        let thumbURL = url.appendingPathComponent(ModelViewerStateManager.thumbnailFileName)
+        return FileManager.default.fileExists(atPath: thumbURL.path)
+    }
+
     func selectedColor(){
         guard let style = getViewController(collectionView!)?.publicVar.profile else {return}
         
@@ -763,10 +772,11 @@ class CustomCollectionViewItem: NSCollectionViewItem {
         
         // 占位背景色
         // Placeholder background color
-        // Treat model folders (with captured .flowvision-thumb.png — signaled by imageInfo set
-        // on a directory) like files so they get the same card-style background instead of
-        // a bare image on the grid background.
-        let isModelFolderWithThumb = file.isDir && file.imageInfo != nil
+        // Treat model folders (with captured .flowvision-thumb.png) like files so they get
+        // the same card-style background. Check the file directly because file.imageInfo is
+        // loaded asynchronously after configureWithImage, and the cell wouldn't be
+        // re-configured when imageInfo arrives.
+        let isModelFolderWithThumb = hasModelThumbnail()
         if file.isDir && !isModelFolderWithThumb {
             // 填充
             // Fill
@@ -832,9 +842,9 @@ class CustomCollectionViewItem: NSCollectionViewItem {
         
         // 占位背景色和边框颜色
         // Placeholder background color and border color
-        // Model folders with captured thumbnail (signaled by imageInfo on a directory)
-        // share the image-tile card styling for visual parity with files.
-        let isModelFolderWithThumb = file.isDir && file.imageInfo != nil
+        // Model folders with captured thumbnail share the image-tile card styling for
+        // visual parity with files. Direct FS check (cheap, OS-cached) — see selectedColor.
+        let isModelFolderWithThumb = hasModelThumbnail()
         if file.isDir && !isModelFolderWithThumb {
             imageViewObj.layer?.backgroundColor = hexToNSColor(alpha: 0).cgColor
             view.layer?.backgroundColor = hexToNSColor(alpha: 0).cgColor
