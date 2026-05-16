@@ -810,8 +810,21 @@ func getImageThumb(url: URL, size oriSize: NSSize? = nil, refSize: NSSize? = nil
     
     if(url.hasDirectoryPath){
 
+        // Captured model thumbnail wins over placeholder.
+        let thumbURL = url.appendingPathComponent(ModelViewerStateManager.thumbnailFileName)
+        if FileManager.default.fileExists(atPath: thumbURL.path),
+           let thumb = NSImage(contentsOf: thumbURL) {
+            return thumb
+        }
+
         if SpineDetector.isSpineFolder(url) {
             return NSImage(systemSymbolName: "figure.run", accessibilityDescription: "Spine Model")
+                ?? NSImage(named: NSImage.folderName)
+        }
+
+        if CubismDetector.isCubismFolder(url) {
+            return NSImage(systemSymbolName: "cube.transparent", accessibilityDescription: "Cubism Model")
+                ?? NSImage(systemSymbolName: "cube", accessibilityDescription: "Cubism Model")
                 ?? NSImage(named: NSImage.folderName)
         }
 
@@ -1733,6 +1746,21 @@ func getImageInfo(url: URL, needMetadata: Bool) -> ImageInfo? {
        values.isAliasFile == true,
        let resolved = try? URL(resolvingAliasFileAt: url) {
         return getImageInfo(url: resolved, needMetadata: needMetadata)
+    }
+    // Model folder containing a captured thumbnail: report PNG dimensions so the
+    // grid cell is sized to match the thumbnail's native aspect ratio (instead of
+    // falling back to DEFAULT_SIZE 512×512 square).
+    if url.hasDirectoryPath {
+        let thumbURL = url.appendingPathComponent(ModelViewerStateManager.thumbnailFileName)
+        if FileManager.default.fileExists(atPath: thumbURL.path),
+           let src = CGImageSourceCreateWithURL(thumbURL as CFURL, nil),
+           let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [String: Any],
+           let w = props[kCGImagePropertyPixelWidth as String] as? CGFloat,
+           let h = props[kCGImagePropertyPixelHeight as String] as? CGFloat,
+           w > 0, h > 0 {
+            return ImageInfo(NSSize(width: w, height: h))
+        }
+        return nil
     }
     // let defaultSize = DEFAULT_SIZE
     if globalVar.HandledVideoExtensions.contains(url.pathExtension.lowercased()) {
