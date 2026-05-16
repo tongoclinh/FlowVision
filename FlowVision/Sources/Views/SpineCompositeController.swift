@@ -274,6 +274,40 @@ class SpineCompositeController: ModelViewerController {
         }
     }
 
+    // MARK: - Snapshot
+
+    /// Composite all layers in subview order (bottom → top) so the saved thumbnail
+    /// reflects what the user actually sees, not just the main layer.
+    override func saveCurrentState() {
+        if let snapshot = captureCompositeSnapshot(maxSize: 512) {
+            ModelViewerStateManager.saveThumbnail(snapshot, for: folderURL)
+        }
+        ModelViewerStateManager.save(
+            base: collectBaseState(), viewer: collectViewerState(), for: folderURL)
+    }
+
+    private func captureCompositeSnapshot(maxSize: CGFloat) -> CGImage? {
+        let images = layers.compactMap { $0.spineView?.captureSnapshot(maxSize: maxSize) }
+        guard !images.isEmpty else { return nil }
+        let w = images.map { $0.width }.max() ?? 0
+        let h = images.map { $0.height }.max() ?? 0
+        guard w > 0, h > 0 else { return nil }
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil, width: w, height: h,
+            bitsPerComponent: 8, bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        ctx.interpolationQuality = .high
+        let rect = CGRect(x: 0, y: 0, width: w, height: h)
+        for image in images {
+            ctx.draw(image, in: rect)
+        }
+        return ctx.makeImage()
+    }
+
     // MARK: - Cleanup
 
     override func cleanup() {
@@ -281,6 +315,10 @@ class SpineCompositeController: ModelViewerController {
         loadTasks.removeAll()
         updateTimer?.invalidate()
         updateTimer = nil
+        // super.cleanup() invokes saveCurrentState before removing views, so it must
+        // run while every layer's spineView is still alive — otherwise the composite
+        // thumbnail would lose every non-main layer.
+        super.cleanup()
         forEachController { $0.pause() }
         for i in layers.indices {
             layers[i].spineView?.removeFromSuperview()
@@ -288,6 +326,5 @@ class SpineCompositeController: ModelViewerController {
             layers[i].controller = nil
         }
         interactionView?.additionalViewers = []
-        super.cleanup()
     }
 }
