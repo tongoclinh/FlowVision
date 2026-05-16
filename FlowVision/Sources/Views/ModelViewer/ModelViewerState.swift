@@ -4,6 +4,8 @@
 //
 
 import AppKit
+import ImageIO
+import UniformTypeIdentifiers
 
 struct CodablePoint: Codable {
     var x: Double
@@ -35,6 +37,22 @@ struct ModelViewerState: Codable {
 enum ModelViewerStateManager {
 
     static let fileName = ".flowvision.json"
+    static let thumbnailFileName = ".flowvision-thumb.png"
+
+    static func thumbnailURL(for folderURL: URL) -> URL {
+        folderURL.appendingPathComponent(thumbnailFileName)
+    }
+
+    /// Write CGImage to `.flowvision-thumb.png` in the model folder.
+    /// Silently no-ops on failure (read-only volumes, permission errors).
+    static func saveThumbnail(_ image: CGImage, for folderURL: URL) {
+        let url = thumbnailURL(for: folderURL)
+        guard let dest = CGImageDestinationCreateWithURL(
+            url as CFURL, UTType.png.identifier as CFString, 1, nil
+        ) else { return }
+        CGImageDestinationAddImage(dest, image, nil)
+        CGImageDestinationFinalize(dest)
+    }
 
     static func loadData(for folderURL: URL) -> Data? {
         let url = folderURL.appendingPathComponent(fileName)
