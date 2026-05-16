@@ -1,2 +1,4 @@
 xcuserdata/
 LocalDev.xcconfig
+/build
+.DS_Store
