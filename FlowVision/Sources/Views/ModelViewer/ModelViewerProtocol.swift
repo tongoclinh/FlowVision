@@ -67,6 +67,9 @@ enum ModelSnapshot {
             intent: .defaultIntent
         ) else { return nil }
 
+        // Preserve alpha — grid cell paints a card background behind the thumbnail,
+        // so transparent regions of the model (e.g. Spine atlas alpha) reveal the card
+        // and look consistent with image tiles.
         return resize(full, maxSize: maxSize)
     }
 

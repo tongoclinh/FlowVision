@@ -763,7 +763,11 @@ class CustomCollectionViewItem: NSCollectionViewItem {
         
         // 占位背景色
         // Placeholder background color
-        if file.isDir {
+        // Treat model folders (with captured .flowvision-thumb.png — signaled by imageInfo set
+        // on a directory) like files so they get the same card-style background instead of
+        // a bare image on the grid background.
+        let isModelFolderWithThumb = file.isDir && file.imageInfo != nil
+        if file.isDir && !isModelFolderWithThumb {
             // 填充
             // Fill
             imageViewObj.layer?.backgroundColor = hexToNSColor(alpha: 0).cgColor

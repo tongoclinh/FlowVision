@@ -772,6 +772,11 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
             NotificationCenter.default.addObserver(self, selector: #selector(scrollViewDidScroll(_:)), name: NSScrollView.didLiveScrollNotification, object: scrollView)
             NotificationCenter.default.addObserver(self, selector: #selector(scrollViewScrollEnd(_:)), name: NSScrollView.didEndLiveScrollNotification, object: scrollView)
         }
+
+        // Listen for model thumbnail updates so the grid can refresh the affected folder cell.
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(modelThumbnailDidUpdate(_:)),
+            name: .modelThumbnailDidUpdate, object: nil)
         
         // 监听键盘按键
         // Monitor keyboard key presses
@@ -1915,6 +1920,41 @@ class ViewController: NSViewController, NSSplitViewDelegate, NSSearchFieldDelega
         // Ensure it's the ScrollView we're interested in (if there are multiple ScrollViews)
         if scrollView == collectionView.enclosingScrollView {
             debounceSetLoadThumbPriority(interval: 0.1, ifNeedVisable: true)
+        }
+    }
+
+    /// Invalidate cached thumb for a model folder after its `.flowvision-thumb.png` is written,
+    /// so the grid tile picks up the new image without requiring a full directory re-scan.
+    @objc func modelThumbnailDidUpdate(_ notification: Notification) {
+        guard let folderURL = notification.userInfo?["folderURL"] as? URL else { return }
+        let folderPath = folderURL.absoluteString
+
+        ThumbImageProcessor.clearCache()
+
+        fileDB.lock()
+        var matchedDir: String? = nil
+        var matchedIndex: Int? = nil
+        for (dirKey, dirModel) in fileDB.db {
+            for (idx, entry) in dirModel.files.enumerated() {
+                if entry.1.path == folderPath {
+                    entry.1.image = nil
+                    entry.1.folderImages = []
+                    entry.1.imageInfo = nil
+                    entry.1.originalSize = nil
+                    entry.1.isLayoutCalcued = false
+                    if dirKey.path == fileDB.curFolder {
+                        matchedDir = dirKey.path
+                        matchedIndex = idx
+                    }
+                }
+            }
+        }
+        fileDB.unlock()
+
+        // If the affected folder is in the currently-displayed grid, reload its cell now.
+        if matchedDir != nil, let idx = matchedIndex {
+            let indexPath = IndexPath(item: idx, section: 0)
+            collectionView.reloadItems(at: [indexPath])
         }
     }
 

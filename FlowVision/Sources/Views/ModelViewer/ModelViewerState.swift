@@ -34,6 +34,12 @@ struct ModelViewerState: Codable {
     var isLooping: Bool?
 }
 
+extension Notification.Name {
+    /// Posted on main thread after a model folder's thumbnail PNG is written.
+    /// userInfo["folderURL"] = URL of the model folder (not the thumbnail itself).
+    static let modelThumbnailDidUpdate = Notification.Name("FlowVision.modelThumbnailDidUpdate")
+}
+
 enum ModelViewerStateManager {
 
     static let fileName = ".flowvision.json"
@@ -45,13 +51,21 @@ enum ModelViewerStateManager {
 
     /// Write CGImage to `.flowvision-thumb.png` in the model folder.
     /// Silently no-ops on failure (read-only volumes, permission errors).
+    /// Posts `.modelThumbnailDidUpdate` on success so grid listeners can invalidate caches.
     static func saveThumbnail(_ image: CGImage, for folderURL: URL) {
         let url = thumbnailURL(for: folderURL)
         guard let dest = CGImageDestinationCreateWithURL(
             url as CFURL, UTType.png.identifier as CFString, 1, nil
         ) else { return }
         CGImageDestinationAddImage(dest, image, nil)
-        CGImageDestinationFinalize(dest)
+        guard CGImageDestinationFinalize(dest) else { return }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .modelThumbnailDidUpdate,
+                object: nil,
+                userInfo: ["folderURL": folderURL]
+            )
+        }
     }
 
     static func loadData(for folderURL: URL) -> Data? {
