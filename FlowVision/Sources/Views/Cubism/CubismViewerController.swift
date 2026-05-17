@@ -131,6 +131,7 @@ class CubismViewerController: ModelViewerController {
         }
 
         bar.onSelectAnimation = { [weak self] name in
+            self?.cancelSequenceIfRunning()
             self?.cubismView?.startMotion(byName: name)
         }
 
@@ -173,6 +174,9 @@ class CubismViewerController: ModelViewerController {
         }
         RunLoop.current.add(timer, forMode: .common)
         updateTimer = timer
+
+        availableAnimationsForEditor = { [weak self] in self?.cubismView?.animationNames ?? [] }
+        setupSequenceRunner(adapter: CubismSequenceAdapter(view: cv))
 
         loadSavedState()
     }

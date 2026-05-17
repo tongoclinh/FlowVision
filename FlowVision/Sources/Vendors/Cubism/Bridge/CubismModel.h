@@ -37,9 +37,22 @@ public:
         Csm::ACubismMotion::FinishedMotionCallback onFinishedMotionHandler = NULL,
         Csm::ACubismMotion::BeganMotionCallback onBeganMotionHandler = NULL);
 
+    /// Like StartMotion but also returns the resolved motion pointer (so the caller can
+    /// key external state — e.g. completion blocks — by motion) and lets the caller
+    /// override the fade-in time. `fadeInSeconds < 0` means use the motion's native fade.
+    /// Returns NULL if the motion could not be started (priority rejected, missing file, …).
+    Csm::ACubismMotion* StartMotionEx(const Csm::csmChar* group, Csm::csmInt32 no,
+        Csm::csmInt32 priority,
+        Csm::csmFloat32 fadeInSeconds,
+        Csm::ACubismMotion::FinishedMotionCallback onFinishedMotionHandler);
+
     Csm::CubismMotionQueueEntryHandle StartRandomMotion(const Csm::csmChar* group, Csm::csmInt32 priority,
         Csm::ACubismMotion::FinishedMotionCallback onFinishedMotionHandler = NULL,
         Csm::ACubismMotion::BeganMotionCallback onBeganMotionHandler = NULL);
+
+    /// Cancel every motion currently in the queue (no callbacks suppressed — the SDK
+    /// will fire FinishedMotionHandler for the cleared entries).
+    void StopAllMotions();
 
     void SetExpression(const Csm::csmChar* expressionID);
     void SetRandomExpression();

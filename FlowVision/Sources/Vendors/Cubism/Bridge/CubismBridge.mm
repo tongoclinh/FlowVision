@@ -10,6 +10,8 @@
 #import "TextureLoader.h"
 #import "CubismModel.h"
 
+#import <os/lock.h>
+
 #import <CubismFramework.hpp>
 #import <Math/CubismMatrix44.hpp>
 #import <Rendering/Metal/CubismRenderer_Metal.hpp>
@@ -78,11 +80,94 @@ static BOOL s_initialized = NO;
 // CubismModelHandle
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Motion completion plumbing
+//
+// Cubism's FinishedMotionCallback is a plain C function pointer. To carry Swift
+// closures across the bridge we keep a global motion-pointer -> record map.
+// Each record holds the heap block and an unsafe back-pointer to the owning
+// `CubismModelHandle` so the trampoline can clean up the handle's pending-keys
+// set on natural completion. Address-reuse safety: dispose ALWAYS removes a
+// handle's entries from the global map before the handle is deallocated, so
+// the trampoline can only ever resolve to a still-live handle.
+//
+// Threading: gMotionCompletions and each handle's _pendingMotionKeys are
+// shared between the (main-queue) trampoline and `dispose` (which may run on
+// the loader's background queue — see CubismViewerController.loadCubismModel).
+// All mutating access goes through `gMotionCompletionsLock`. Blocks are
+// invoked AFTER releasing the lock to avoid re-entry deadlocks.
+// ---------------------------------------------------------------------------
+
+@class CubismModelHandle;
+
+@interface CubismMotionCompletionRecord : NSObject {
+@public
+    void(^block)(void);
+    __unsafe_unretained CubismModelHandle *handle;
+}
+@end
+
+@implementation CubismMotionCompletionRecord
+- (void)dealloc {
+    [block release];
+    [super dealloc];
+}
+@end
+
+static NSMapTable<NSValue *, CubismMotionCompletionRecord *> *gMotionCompletions = nil;
+static dispatch_once_t gMotionCompletionsOnce = 0;
+static os_unfair_lock gMotionCompletionsLock = OS_UNFAIR_LOCK_INIT;
+
+static void EnsureMotionCompletionsMap(void) {
+    dispatch_once(&gMotionCompletionsOnce, ^{
+        gMotionCompletions = [[NSMapTable strongToStrongObjectsMapTable] retain];
+    });
+}
+
+@interface CubismModelHandle (CompletionInternal)
+/// Caller MUST already hold `gMotionCompletionsLock` — this method mutates the
+/// per-instance `_pendingMotionKeys` set which is shared with `dispose` (which
+/// may run off-main) and the trampoline.
+- (void)_dropPendingMotionKeyLocked:(NSValue *)key;
+@end
+
+static void CubismCompletionTrampoline(Csm::ACubismMotion *motion) {
+    if (!motion) return;
+    // Capture pointer by value — the motion object may have been freed by the
+    // motion manager between this callback returning and our main-queue block
+    // running. We never dereference it, only use it as a map key.
+    void *motionPtr = motion;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!gMotionCompletions) return;
+        NSValue *key = [NSValue valueWithPointer:motionPtr];
+        // Acquire the lock for the lookup + remove, then release before
+        // invoking the user block (which may take time / re-enter the bridge).
+        os_unfair_lock_lock(&gMotionCompletionsLock);
+        CubismMotionCompletionRecord *record = [[gMotionCompletions objectForKey:key] retain];
+        if (record) {
+            [gMotionCompletions removeObjectForKey:key];
+            // Drop the key from the owning handle's set BEFORE invoking the
+            // block. Handle is guaranteed alive: dispose always purges its
+            // entries from this map before the handle is deallocated.
+            [record->handle _dropPendingMotionKeyLocked:key];
+        }
+        os_unfair_lock_unlock(&gMotionCompletionsLock);
+        if (record) {
+            void(^block)(void) = record->block;
+            if (block) block();
+            [record release];
+        }
+    });
+}
+
 @interface CubismModelHandle () {
     CubismModelWrapper* _model;
     TextureLoader* _textureLoader;
     BOOL _hasCustomViewBounds;
     float _customLeft, _customRight, _customBottom, _customTop;
+    // NSValue-wrapped ACubismMotion* keys currently registered in gMotionCompletions
+    // for this model. Used by `dispose` to drop pending blocks.
+    NSMutableSet<NSValue *> *_pendingMotionKeys;
 }
 @end
 
@@ -95,6 +180,8 @@ static BOOL s_initialized = NO;
         _model = NULL;
         _textureLoader = nil;
         _hasCustomViewBounds = NO;
+        _pendingMotionKeys = [[NSMutableSet alloc] init];
+        EnsureMotionCompletionsMap();
     }
     return self;
 }
@@ -169,8 +256,72 @@ static BOOL s_initialized = NO;
                    atIndex:(NSInteger)index
                   priority:(NSInteger)priority
 {
-    if (!_model) return;
-    _model->StartMotion([group UTF8String], (csmInt32)index, (csmInt32)priority);
+    [self startMotionInGroup:group
+                     atIndex:index
+                    priority:priority
+               fadeInSeconds:-1.0f
+                  completion:nil];
+}
+
+- (void)startMotionInGroup:(NSString *)group
+                   atIndex:(NSInteger)index
+                  priority:(NSInteger)priority
+             fadeInSeconds:(float)fadeInSeconds
+                completion:(void(^)(void))completion
+{
+    if (!_model) {
+        // Caller still expects exactly-one or zero callback. Without a model we
+        // never started a motion, so do not fire the block.
+        return;
+    }
+
+    Csm::ACubismMotion::FinishedMotionCallback cb = completion ? &CubismCompletionTrampoline : NULL;
+    Csm::ACubismMotion *motion = _model->StartMotionEx([group UTF8String],
+                                                       (Csm::csmInt32)index,
+                                                       (Csm::csmInt32)priority,
+                                                       (Csm::csmFloat32)fadeInSeconds,
+                                                       cb);
+
+    if (!completion) return;
+
+    if (motion == NULL) {
+        // Motion rejected (priority filter, missing file). The trampoline will
+        // never fire — invoke the completion now so the caller doesn't deadlock.
+        dispatch_async(dispatch_get_main_queue(), completion);
+        return;
+    }
+
+    NSValue *key = [NSValue valueWithPointer:motion];
+
+    CubismMotionCompletionRecord *record = [[CubismMotionCompletionRecord alloc] init];
+    record->block = [completion copy];
+    record->handle = self;
+
+    os_unfair_lock_lock(&gMotionCompletionsLock);
+    // If a record is already registered for this motion (e.g. same group/index
+    // restarted before its predecessor finished), drop the old one — the SDK
+    // will not fire two completions for a single motion handler swap.
+    CubismMotionCompletionRecord *existing = [gMotionCompletions objectForKey:key];
+    if (existing != nil) {
+        // Clear the existing owner's pending key first (may be a different handle).
+        [existing->handle _dropPendingMotionKeyLocked:key];
+        [gMotionCompletions removeObjectForKey:key];
+    }
+    [gMotionCompletions setObject:record forKey:key];
+    [_pendingMotionKeys addObject:key];
+    os_unfair_lock_unlock(&gMotionCompletionsLock);
+
+    [record release];
+}
+
+- (void)_dropPendingMotionKeyLocked:(NSValue *)key
+{
+    if (key) [_pendingMotionKeys removeObject:key];
+}
+
+- (void)stopAllMotions
+{
+    if (_model) _model->StopAllMotions();
 }
 
 // --- Expressions ---
@@ -330,6 +481,20 @@ static BOOL s_initialized = NO;
 
 - (void)dispose
 {
+    // dispose may be called from the loader's background thread (see
+    // CubismViewerController.loadCubismModel which kicks loadFromPath off
+    // a Task.detached, and loadFromPath calls -dispose first). The lock
+    // around gMotionCompletions / _pendingMotionKeys lets that path coexist
+    // safely with the main-queue trampoline.
+    os_unfair_lock_lock(&gMotionCompletionsLock);
+    if (_pendingMotionKeys.count > 0 && gMotionCompletions) {
+        for (NSValue *key in _pendingMotionKeys) {
+            [gMotionCompletions removeObjectForKey:key];
+        }
+        [_pendingMotionKeys removeAllObjects];
+    }
+    os_unfair_lock_unlock(&gMotionCompletionsLock);
+
     if (_model) { delete _model; _model = NULL; }
     if (_textureLoader) { [_textureLoader release]; _textureLoader = nil; }
     _hasCustomViewBounds = NO;
@@ -338,6 +503,7 @@ static BOOL s_initialized = NO;
 - (void)dealloc
 {
     [self dispose];
+    [_pendingMotionKeys release];
     [super dealloc];
 }
 

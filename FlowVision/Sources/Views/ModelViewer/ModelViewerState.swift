@@ -32,6 +32,7 @@ struct ModelViewerState: Codable {
     var selectedAnimation: String?
     var playbackSpeed: Float?
     var isLooping: Bool?
+    var sequences: [AnimSequence]?
 }
 
 extension Notification.Name {

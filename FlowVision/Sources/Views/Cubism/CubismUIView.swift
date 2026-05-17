@@ -206,8 +206,14 @@ final class CubismUIView: MTKView, ModelViewer {
     }
 
     func startMotion(byName name: String, priority: Int = 3) {
-        guard let info = motionList.first(where: { $0.displayName == name }) else { return }
+        guard let info = motionInfo(forName: name) else { return }
         modelHandle.startMotion(inGroup: info.group, at: info.index, priority: priority)
+    }
+
+    /// First motion whose displayName matches `name`. Used by the sequence
+    /// adapter to translate a sequence leaf name into (group, index).
+    func motionInfo(forName name: String) -> MotionInfo? {
+        motionList.first(where: { $0.displayName == name })
     }
 
     func startMotion(group: String, index: Int, priority: Int = 2) {

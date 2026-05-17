@@ -45,6 +45,19 @@ NS_ASSUME_NONNULL_BEGIN
                    atIndex:(NSInteger)index
                   priority:(NSInteger)priority;
 
+/// Start a motion with optional fade-in override and a completion block fired on the
+/// main thread exactly once when the motion ends naturally or is superseded.
+/// `fadeInSeconds < 0` falls back to the motion's native `FadeInTime` from `.motion3.json`.
+/// `completion` is dropped silently if the model is disposed before the motion finishes.
+- (void)startMotionInGroup:(NSString *)group
+                   atIndex:(NSInteger)index
+                  priority:(NSInteger)priority
+             fadeInSeconds:(float)fadeInSeconds
+                completion:(nullable void(^)(void))completion;
+
+/// Cancel every queued motion. Used by sequence runners to abort mid-sequence.
+- (void)stopAllMotions;
+
 // --- Expression ---
 
 @property (nonatomic, readonly) NSInteger expressionCount;

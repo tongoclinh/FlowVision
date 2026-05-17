@@ -127,6 +127,7 @@ class SpineViewerController: ModelViewerController {
         }
         bar.onSelectAnimation = { [weak self] name in
             guard let self else { return }
+            self.cancelSequenceIfRunning()
             self.spineController?.animationState.setAnimationByName(
                 trackIndex: 0, animationName: name, loop: self.isLooping
             )
@@ -169,6 +170,11 @@ class SpineViewerController: ModelViewerController {
         }
         RunLoop.current.add(timer, forMode: .common)
         updateTimer = timer
+
+        if let ctrl = spineController {
+            availableAnimationsForEditor = { [weak self] in self?.availableAnimations ?? [] }
+            setupSequenceRunner(adapter: SpineSequenceAdapter(controller: ctrl))
+        }
 
         loadSavedState()
         spineView?.isHidden = false

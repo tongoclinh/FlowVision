@@ -192,6 +192,7 @@ class SpineCompositeController: ModelViewerController {
 
         bar.onSelectAnimation = { [weak self] name in
             guard let self else { return }
+            self.cancelSequenceIfRunning()
             for i in self.layers.indices {
                 guard let ctrl = self.layers[i].controller else { continue }
                 let animName: String
@@ -249,6 +250,23 @@ class SpineCompositeController: ModelViewerController {
         }
         RunLoop.current.add(timer, forMode: .common)
         updateTimer = timer
+
+        if let mainCtrl = layers[mainLayerIndex].controller {
+            let secondaries: [(SpineController, [String])] = layers.enumerated()
+                .filter { $0.offset != mainLayerIndex }
+                .compactMap { (_, layer) in
+                    guard let ctrl = layer.controller else { return nil }
+                    return (ctrl, layer.animations)
+                }
+            availableAnimationsForEditor = { [weak self] in
+                guard let self else { return [] }
+                return self.layers[self.mainLayerIndex].animations
+            }
+            setupSequenceRunner(adapter: SpineSequenceAdapter(
+                main: mainCtrl,
+                mainAnimations: layers[mainLayerIndex].animations,
+                secondaries: secondaries))
+        }
 
         loadSavedState()
         for layer in layers { layer.spineView?.isHidden = false }

@@ -463,6 +463,67 @@ Csm::CubismMotionQueueEntryHandle CubismModelWrapper::StartMotion(const Csm::csm
     return _motionManager->StartMotionPriority(motion, autoDelete, priority);
 }
 
+Csm::ACubismMotion* CubismModelWrapper::StartMotionEx(const Csm::csmChar* group, Csm::csmInt32 no,
+    Csm::csmInt32 priority,
+    Csm::csmFloat32 fadeInSeconds,
+    Csm::ACubismMotion::FinishedMotionCallback onFinishedMotionHandler)
+{
+    _lastMotionGroup = group;
+    _lastMotionNo = no;
+
+    if (priority == PriorityForce)
+    {
+        _motionManager->SetReservePriority(priority);
+    }
+    else if (!_motionManager->ReserveMotion(priority))
+    {
+        return NULL;
+    }
+
+    const Csm::csmString fileName = _modelSetting->GetMotionFileName(group, no);
+    Csm::csmString name = Csm::Utils::CubismString::GetFormatedString("%s_%d", group, no);
+    CubismMotion* motion = static_cast<CubismMotion*>(_motions[name.GetRawString()]);
+    Csm::csmBool autoDelete = false;
+
+    if (motion == NULL)
+    {
+        Csm::csmString path = fileName;
+        path = _modelHomeDir + path;
+
+        Csm::csmByte* buffer;
+        Csm::csmSizeInt size;
+        buffer = CreateBuffer(path.GetRawString(), &size);
+        motion = static_cast<CubismMotion*>(LoadMotion(buffer, size, NULL, onFinishedMotionHandler, NULL, _modelSetting, group, no));
+
+        if (motion)
+        {
+            motion->SetEffectIds(_eyeBlinkIds, _lipSyncIds);
+            autoDelete = true;
+        }
+
+        DeleteBuffer(buffer, path.GetRawString());
+    }
+    else
+    {
+        motion->SetFinishedMotionHandler(onFinishedMotionHandler);
+    }
+
+    if (motion == NULL) return NULL;
+
+    if (fadeInSeconds >= 0.0f)
+    {
+        motion->SetFadeInTime(fadeInSeconds);
+    }
+
+    _motionManager->StartMotionPriority(motion, autoDelete, priority);
+    return motion;
+}
+
+void CubismModelWrapper::StopAllMotions()
+{
+    if (_motionManager) _motionManager->StopAllMotions();
+}
+
 Csm::CubismMotionQueueEntryHandle CubismModelWrapper::StartRandomMotion(const Csm::csmChar* group, Csm::csmInt32 priority,
     Csm::ACubismMotion::FinishedMotionCallback onFinishedMotionHandler,
     Csm::ACubismMotion::BeganMotionCallback onBeganMotionHandler)

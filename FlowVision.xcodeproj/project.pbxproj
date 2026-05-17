@@ -238,6 +238,23 @@
 		MV0006060606060606060606 /* SpineUIViewModelViewerConformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1006060606060606060606 /* SpineUIViewModelViewerConformance.swift */; };
 		MV0007070707070707070707 /* CheckerPatternView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1007070707070707070707 /* CheckerPatternView.swift */; };
 		MV0008080808080808080808 /* ModelViewerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1008080808080808080808 /* ModelViewerState.swift */; };
+		MV0009090909090909090909 /* SequenceModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1009090909090909090909 /* SequenceModel.swift */; };
+		MV0010101010101010101010 /* SequenceNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1010101010101010101010 /* SequenceNode.swift */; };
+		MV0011111111111111111111 /* SequenceRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1011111111111111111111 /* SequenceRunner.swift */; };
+		MV0012121212121212121212 /* SpineSequenceAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1012121212121212121212 /* SpineSequenceAdapter.swift */; };
+		MV0013131313131313131313 /* CubismSequenceAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1013131313131313131313 /* CubismSequenceAdapter.swift */; };
+		MV0014141414141414141414 /* SequenceEditorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1014141414141414141414 /* SequenceEditorState.swift */; };
+		MV0015151515151515151515 /* SequenceEditorWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1015151515151515151515 /* SequenceEditorWindow.swift */; };
+		MV0016161616161616161616 /* SequenceEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1016161616161616161616 /* SequenceEditorView.swift */; };
+		MV0017171717171717171717 /* SequenceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1017171717171717171717 /* SequenceListView.swift */; };
+		MV0019191919191919191919 /* BlockCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1019191919191919191919 /* BlockCardView.swift */; };
+		MV0020202020202020202020 /* LoopCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1020202020202020202020 /* LoopCardView.swift */; };
+		MV0021212121212121212121 /* PaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1021212121212121212121 /* PaletteView.swift */; };
+		MV0022222222222222222222 /* SequenceCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1022222222222222222222 /* SequenceCanvasView.swift */; };
+		MV0023232323232323232323 /* BlockDragPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1023232323232323232323 /* BlockDragPayload.swift */; };
+		MV0024242424242424242424 /* InsertionDropStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1024242424242424242424 /* InsertionDropStrip.swift */; };
+		MV0025252525252525252525 /* SequenceEditorStateDragDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1025252525252525252525 /* SequenceEditorStateDragDrop.swift */; };
+		MV0026262626262626262626 /* BlockRowControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = MV1026262626262626262626 /* BlockRowControls.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -695,6 +712,23 @@
 		MV1006060606060606060606 /* SpineUIViewModelViewerConformance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpineUIViewModelViewerConformance.swift; sourceTree = "<group>"; };
 		MV1007070707070707070707 /* CheckerPatternView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckerPatternView.swift; sourceTree = "<group>"; };
 		MV1008080808080808080808 /* ModelViewerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelViewerState.swift; sourceTree = "<group>"; };
+		MV1009090909090909090909 /* SequenceModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequenceModel.swift; sourceTree = "<group>"; };
+		MV1010101010101010101010 /* SequenceNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequenceNode.swift; sourceTree = "<group>"; };
+		MV1011111111111111111111 /* SequenceRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequenceRunner.swift; sourceTree = "<group>"; };
+		MV1012121212121212121212 /* SpineSequenceAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpineSequenceAdapter.swift; sourceTree = "<group>"; };
+		MV1013131313131313131313 /* CubismSequenceAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CubismSequenceAdapter.swift; sourceTree = "<group>"; };
+		MV1014141414141414141414 /* SequenceEditorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequenceEditorState.swift; sourceTree = "<group>"; };
+		MV1015151515151515151515 /* SequenceEditorWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequenceEditorWindow.swift; sourceTree = "<group>"; };
+		MV1016161616161616161616 /* SequenceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequenceEditorView.swift; sourceTree = "<group>"; };
+		MV1017171717171717171717 /* SequenceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequenceListView.swift; sourceTree = "<group>"; };
+		MV1019191919191919191919 /* BlockCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockCardView.swift; sourceTree = "<group>"; };
+		MV1020202020202020202020 /* LoopCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopCardView.swift; sourceTree = "<group>"; };
+		MV1021212121212121212121 /* PaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteView.swift; sourceTree = "<group>"; };
+		MV1022222222222222222222 /* SequenceCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequenceCanvasView.swift; sourceTree = "<group>"; };
+		MV1023232323232323232323 /* BlockDragPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDragPayload.swift; sourceTree = "<group>"; };
+		MV1024242424242424242424 /* InsertionDropStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertionDropStrip.swift; sourceTree = "<group>"; };
+		MV1025252525252525252525 /* SequenceEditorStateDragDrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequenceEditorStateDragDrop.swift; sourceTree = "<group>"; };
+		MV1026262626262626262626 /* BlockRowControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockRowControls.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1427,8 +1461,33 @@
 				MV1006060606060606060606 /* SpineUIViewModelViewerConformance.swift */,
 				MV1007070707070707070707 /* CheckerPatternView.swift */,
 				MV1008080808080808080808 /* ModelViewerState.swift */,
+				MVG00000000000000000002 /* Sequence */,
 			);
 			path = ModelViewer;
+			sourceTree = "<group>";
+		};
+		MVG00000000000000000002 /* Sequence */ = {
+			isa = PBXGroup;
+			children = (
+				MV1009090909090909090909 /* SequenceModel.swift */,
+				MV1010101010101010101010 /* SequenceNode.swift */,
+				MV1011111111111111111111 /* SequenceRunner.swift */,
+				MV1012121212121212121212 /* SpineSequenceAdapter.swift */,
+				MV1013131313131313131313 /* CubismSequenceAdapter.swift */,
+				MV1014141414141414141414 /* SequenceEditorState.swift */,
+				MV1015151515151515151515 /* SequenceEditorWindow.swift */,
+				MV1016161616161616161616 /* SequenceEditorView.swift */,
+				MV1017171717171717171717 /* SequenceListView.swift */,
+				MV1019191919191919191919 /* BlockCardView.swift */,
+				MV1020202020202020202020 /* LoopCardView.swift */,
+				MV1021212121212121212121 /* PaletteView.swift */,
+				MV1022222222222222222222 /* SequenceCanvasView.swift */,
+				MV1023232323232323232323 /* BlockDragPayload.swift */,
+				MV1024242424242424242424 /* InsertionDropStrip.swift */,
+				MV1025252525252525252525 /* SequenceEditorStateDragDrop.swift */,
+				MV1026262626262626262626 /* BlockRowControls.swift */,
+			);
+			path = Sequence;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1703,6 +1762,23 @@
 				MV0006060606060606060606 /* SpineUIViewModelViewerConformance.swift in Sources */,
 				MV0007070707070707070707 /* CheckerPatternView.swift in Sources */,
 				MV0008080808080808080808 /* ModelViewerState.swift in Sources */,
+				MV0009090909090909090909 /* SequenceModel.swift in Sources */,
+				MV0010101010101010101010 /* SequenceNode.swift in Sources */,
+				MV0011111111111111111111 /* SequenceRunner.swift in Sources */,
+				MV0012121212121212121212 /* SpineSequenceAdapter.swift in Sources */,
+				MV0013131313131313131313 /* CubismSequenceAdapter.swift in Sources */,
+				MV0014141414141414141414 /* SequenceEditorState.swift in Sources */,
+				MV0015151515151515151515 /* SequenceEditorWindow.swift in Sources */,
+				MV0016161616161616161616 /* SequenceEditorView.swift in Sources */,
+				MV0017171717171717171717 /* SequenceListView.swift in Sources */,
+				MV0019191919191919191919 /* BlockCardView.swift in Sources */,
+				MV0020202020202020202020 /* LoopCardView.swift in Sources */,
+				MV0021212121212121212121 /* PaletteView.swift in Sources */,
+				MV0022222222222222222222 /* SequenceCanvasView.swift in Sources */,
+				MV0023232323232323232323 /* BlockDragPayload.swift in Sources */,
+				MV0024242424242424242424 /* InsertionDropStrip.swift in Sources */,
+				MV0025252525252525252525 /* SequenceEditorStateDragDrop.swift in Sources */,
+				MV0026262626262626262626 /* BlockRowControls.swift in Sources */,
 				CBd65841aa0865c50485d22f /* ACubismMotion.cpp in Sources */,
 				CB1479107535cebd2f365832 /* Allocator.mm in Sources */,
 				CBc0a09243d8e48268d5e326 /* CubismBreath.cpp in Sources */,
