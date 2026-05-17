@@ -14,6 +14,11 @@ class ModelControlsBar: NSVisualEffectView {
     var onChangeBgMode: ((BackgroundMode) -> Void)?
     var onScrub: ((Float) -> Void)?
     var onScrubEnd: (() -> Void)?
+    /// User clicked a sequence button. Viewer controller decides whether to
+    /// start or toggle off based on whether this sequence is already playing.
+    var onRunSequence: ((AnimSequence) -> Void)?
+    /// User clicked the "Edit Sequences…" button.
+    var onOpenSequenceEditor: (() -> Void)?
 
     var additionalControlsView: NSView? {
         didSet {
@@ -40,6 +45,16 @@ class ModelControlsBar: NSVisualEffectView {
     private var isLooping = true
     private var controlsStack: NSStackView!
     private let additionalControlsInsertIndex = 3
+
+    // Sequence row (Phase 7). Hidden by default; revealed when a model viewer
+    // calls setSequences(_:) — even if the array is empty, the row stays
+    // visible because the "Edit Sequences…" entry-point lives there.
+    private let sequenceScroll = NSScrollView()
+    private let sequenceStack = NSStackView()
+    private let editSequencesBtn = NSButton()
+    private var sequenceButtons: [NSButton] = []
+    private var sequences: [AnimSequence] = []
+    private var playingSequenceName: String?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -111,17 +126,37 @@ class ModelControlsBar: NSVisualEffectView {
         bgColorWell.action = #selector(bgColorChanged)
         if #available(macOS 13.0, *) { bgColorWell.colorWellStyle = .minimal }
 
+        sequenceStack.orientation = .horizontal
+        sequenceStack.spacing = 4
+        sequenceScroll.documentView = sequenceStack
+        sequenceScroll.hasHorizontalScroller = false
+        sequenceScroll.hasVerticalScroller = false
+        sequenceScroll.drawsBackground = false
+        sequenceScroll.translatesAutoresizingMaskIntoConstraints = false
+        sequenceScroll.isHidden = true
+
+        editSequencesBtn.title = "Edit Sequences…"
+        editSequencesBtn.bezelStyle = .recessed
+        editSequencesBtn.controlSize = .small
+        editSequencesBtn.font = .systemFont(ofSize: 11)
+        editSequencesBtn.target = self
+        editSequencesBtn.action = #selector(editSequencesTapped)
+        editSequencesBtn.translatesAutoresizingMaskIntoConstraints = false
+        editSequencesBtn.isHidden = true
+
         let sep = NSBox()
         sep.boxType = .separator
         sep.translatesAutoresizingMaskIntoConstraints = false
 
-        let spacer = NSView()
-        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
+        // Single flex item (timeSlider) — having two `defaultLow`-hugging items
+        // in an NSStackView with .gravityAreas distribution caused the slider
+        // to be intermittently squeezed to 0 width while a sibling spacer
+        // claimed all the free space. Letting the slider stretch and packing
+        // the trailing items right after the time label is both simpler and
+        // deterministic.
         controlsStack = NSStackView(views: [
             playBtn, loopBtn, speedPopup,
-            timeSlider, timeLabel, spacer, zoomLabel, bgModeSegment, bgColorWell
+            timeSlider, timeLabel, zoomLabel, bgModeSegment, bgColorWell
         ])
         controlsStack.orientation = .horizontal
         controlsStack.spacing = 6
@@ -130,6 +165,8 @@ class ModelControlsBar: NSVisualEffectView {
         controlsStack.translatesAutoresizingMaskIntoConstraints = false
 
         addSubview(animScroll)
+        addSubview(sequenceScroll)
+        addSubview(editSequencesBtn)
         addSubview(sep)
         addSubview(controlsStack)
 
@@ -138,7 +175,13 @@ class ModelControlsBar: NSVisualEffectView {
             animScroll.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             animScroll.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             animScroll.heightAnchor.constraint(equalToConstant: 24),
-            sep.topAnchor.constraint(equalTo: animScroll.bottomAnchor, constant: 4),
+            sequenceScroll.topAnchor.constraint(equalTo: animScroll.bottomAnchor, constant: 4),
+            sequenceScroll.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            sequenceScroll.trailingAnchor.constraint(equalTo: editSequencesBtn.leadingAnchor, constant: -8),
+            sequenceScroll.heightAnchor.constraint(equalToConstant: 24),
+            editSequencesBtn.centerYAnchor.constraint(equalTo: sequenceScroll.centerYAnchor),
+            editSequencesBtn.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            sep.topAnchor.constraint(equalTo: sequenceScroll.bottomAnchor, constant: 4),
             sep.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             sep.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             controlsStack.topAnchor.constraint(equalTo: sep.bottomAnchor, constant: 4),
@@ -265,6 +308,61 @@ class ModelControlsBar: NSVisualEffectView {
             zoomLabel.stringValue = String(format: "%.0f%%", pct)
         }
     }
+
+    // MARK: - Sequences (Phase 7)
+
+    /// Replace the sequence button row. Pass `[]` to keep the "Edit Sequences…"
+    /// entry-point visible with no per-sequence buttons.
+    func setSequences(_ sequences: [AnimSequence]) {
+        self.sequences = sequences
+        sequenceButtons.forEach { $0.removeFromSuperview() }
+        sequenceButtons.removeAll()
+        for seq in sequences {
+            let btn = NSButton(title: seq.name, target: self, action: #selector(sequenceTapped(_:)))
+            btn.bezelStyle = .recessed
+            btn.setButtonType(.pushOnPushOff)
+            btn.controlSize = .small
+            btn.font = .systemFont(ofSize: 11)
+            btn.state = (seq.name == playingSequenceName) ? .on : .off
+            sequenceStack.addArrangedSubview(btn)
+            sequenceButtons.append(btn)
+        }
+        sequenceStack.layoutSubtreeIfNeeded()
+        let size = sequenceStack.fittingSize
+        let scrollHeight = max(sequenceScroll.contentView.bounds.height, 24)
+        sequenceStack.frame = NSRect(x: 0, y: 0,
+            width: max(size.width, sequenceScroll.contentView.bounds.width),
+            height: scrollHeight)
+        // Always show the row once a viewer has wired it — even an empty list
+        // needs the "Edit Sequences…" entry-point.
+        sequenceScroll.isHidden = false
+        editSequencesBtn.isHidden = false
+    }
+
+    /// Highlight the sequence button whose name matches `name`. Pass `nil`
+    /// to clear all highlights. Visual only — never invokes button actions.
+    func setSequencePlaying(_ name: String?) {
+        playingSequenceName = name
+        for btn in sequenceButtons {
+            btn.state = (btn.title == name) ? .on : .off
+        }
+    }
+
+    /// Set the animation row's visual highlight without firing the
+    /// `onSelectAnimation` callback. Used by SequenceRunner to mirror the
+    /// currently-playing leaf in the existing animation row.
+    func setHighlight(animationName name: String?) {
+        for btn in animButtons {
+            btn.state = (btn.title == name) ? .on : .off
+        }
+    }
+
+    @objc private func sequenceTapped(_ sender: NSButton) {
+        guard let seq = sequences.first(where: { $0.name == sender.title }) else { return }
+        onRunSequence?(seq)
+    }
+
+    @objc private func editSequencesTapped() { onOpenSequenceEditor?() }
 
     // MARK: - Actions
 
